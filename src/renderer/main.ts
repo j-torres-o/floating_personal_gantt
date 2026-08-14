@@ -95,11 +95,13 @@ class App {
       });
 
       // Escuchar progreso de descarga de actualizaciones
-      window.electronAPI.onUpdateDownloadProgress((percent) => {
-        if (this.activeUpdateModal) {
-          this.activeUpdateModal.updateProgress(percent);
-        }
-      });
+      if (typeof window.electronAPI.onUpdateDownloadProgress === 'function') {
+        window.electronAPI.onUpdateDownloadProgress((percent) => {
+          if (this.activeUpdateModal) {
+            this.activeUpdateModal.updateProgress(percent);
+          }
+        });
+      }
     }
 
     this.render();

@@ -167,7 +167,10 @@ function createWindow() {
   if (isDev && process.env.VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+    const indexPath = fs.existsSync(path.join(__dirname, '../../dist/index.html'))
+      ? path.join(__dirname, '../../dist/index.html')
+      : path.join(__dirname, '../dist/index.html');
+    mainWindow.loadFile(indexPath);
   }
 
   setupSystemTray(mainWindow);

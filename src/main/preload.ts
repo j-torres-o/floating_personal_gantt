@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
-import { AppConfig, WindowBounds } from '../types/config';
-import { ProjectsData } from '../types/project';
-import { UpdateInfoResult } from '../types/electron';
+import type { AppConfig, WindowBounds } from '../types/config';
+import type { ProjectsData } from '../types/project';
+import type { UpdateInfoResult } from '../types/electron';
 
 contextBridge.exposeInMainWorld('electronAPI', {
   // Almacenamiento desacoplado

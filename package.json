@@ -1,17 +1,18 @@
 {
   "name": "floating-personal-gantt",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "Aplicación de escritorio ultra-ligera y moderna para Windows con diagrama de Gantt flotante, modo Click-Through, mini-widget HUD y persistencia desacoplada.",
-  "main": "dist-electron/main.js",
+  "main": "dist-electron/main/main.js",
   "scripts": {
     "dev": "vite",
+    "clean": "node -e \"fs.rmSync('dist-electron', { recursive: true, force: true }); fs.rmSync('dist', { recursive: true, force: true });\"",
     "build": "tsc && vite build",
     "build:electron": "tsc -p tsconfig.electron.json",
-    "start": "npm run build && npm run build:electron && electron .",
+    "start": "npm run clean && npm run build && npm run build:electron && electron .",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.electron.json --noEmit",
     "lint": "eslint src --ext .ts,.html",
     "test": "vitest run",
-    "package:win": "npm run build && npm run build:electron && electron-builder --win"
+    "package:win": "npm run clean && npm run build && npm run build:electron && electron-builder --win"
   },
   "keywords": [
     "gantt",
