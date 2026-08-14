@@ -8,9 +8,9 @@
   --font-mono: 'JetBrains Mono', monospace;
 
   /* Tema Oscuro (Por defecto) */
-  --bg-app: rgba(15, 23, 42, 0.78);
-  --bg-app-hover: rgba(15, 23, 42, 0.88);
-  --bg-panel: rgba(30, 41, 59, 0.70);
+  --bg-app: #0F172A;
+  --bg-app-hover: #1E293B;
+  --bg-panel: #1E293B;
   --bg-glass-card: rgba(255, 255, 255, 0.05);
   --bg-glass-card-hover: rgba(255, 255, 255, 0.09);
   
@@ -28,8 +28,8 @@
   --accent-warning: #FBBF24;
   --accent-danger: #F87171;
 
-  --weekend-bg: rgba(0, 0, 0, 0.18);
-  --grid-line: rgba(255, 255, 255, 0.05);
+  --weekend-bg: rgba(0, 0, 0, 0.25);
+  --grid-line: rgba(255, 255, 255, 0.06);
   --now-line-color: #F43F5E;
 
   /* Elevación y Efectos */
@@ -45,11 +45,11 @@
 
 /* Tema Claro */
 body.theme-light {
-  --bg-app: rgba(248, 250, 252, 0.82);
-  --bg-app-hover: rgba(248, 250, 252, 0.92);
-  --bg-panel: rgba(241, 245, 249, 0.75);
-  --bg-glass-card: rgba(255, 255, 255, 0.65);
-  --bg-glass-card-hover: rgba(255, 255, 255, 0.85);
+  --bg-app: #F8FAFC;
+  --bg-app-hover: #F1F5F9;
+  --bg-panel: #FFFFFF;
+  --bg-glass-card: rgba(255, 255, 255, 0.85);
+  --bg-glass-card-hover: rgba(255, 255, 255, 0.95);
 
   --border-glass: rgba(0, 0, 0, 0.08);
   --border-glass-bright: rgba(0, 0, 0, 0.16);
@@ -61,75 +61,78 @@ body.theme-light {
 
   --accent-primary: #0284C7;
   --accent-glow: rgba(2, 132, 199, 0.25);
+  --accent-secondary: #059669;
+  --accent-warning: #D97706;
+  --accent-danger: #DC2626;
+
   --weekend-bg: rgba(0, 0, 0, 0.04);
-  --grid-line: rgba(0, 0, 0, 0.05);
-  --glass-shadow: 0 12px 32px 0 rgba(15, 23, 42, 0.15);
+  --grid-line: rgba(0, 0, 0, 0.06);
+  --now-line-color: #E11D48;
 }
 
 /* Reset y Base */
 * {
+  box-sizing: border-box;
   margin: 0;
   padding: 0;
-  box-sizing: border-box;
   user-select: none;
 }
 
-html, body {
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  background: transparent !important;
+body {
   font-family: var(--font-sans);
+  background: transparent;
   color: var(--text-main);
-  font-size: 14px;
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Contenedor Principal de la App */
-.app-container {
+/* Contenedor Principal Flotante */
+#app-root {
   width: 100%;
   height: 100%;
   display: flex;
   flex-direction: column;
   background: var(--bg-app);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--border-glass);
+  border: 1px solid var(--border-glass-bright);
   border-radius: var(--radius-lg);
   box-shadow: var(--glass-shadow);
   overflow: hidden;
   position: relative;
-  transition: opacity var(--transition-normal), border-color var(--transition-normal);
+  transition: opacity var(--transition-normal);
 }
 
-/* Barra de Título Frameless */
+/* Barra de Título (TitleBar) Arrastrable */
 .titlebar {
-  height: 38px;
-  min-height: 38px;
+  height: 42px;
+  min-height: 42px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border-glass);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 12px;
-  background: rgba(0, 0, 0, 0.12);
-  border-bottom: 1px solid var(--border-glass-subtle);
-  -webkit-app-region: drag; /* Permite arrastrar la ventana */
+  padding: 0 14px;
+  -webkit-app-region: drag;
+  z-index: 100;
 }
 
 .titlebar-left {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
 }
 
 .app-badge {
   font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
+  font-weight: 700;
   letter-spacing: 0.5px;
+  text-transform: uppercase;
   color: var(--accent-primary);
-  background: rgba(56, 189, 248, 0.12);
-  padding: 2px 8px;
-  border-radius: var(--radius-full);
-  border: 1px solid rgba(56, 189, 248, 0.25);
+  background: var(--accent-glow);
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(56, 189, 248, 0.3);
 }
 
 .titlebar-actions {
@@ -139,45 +142,90 @@ html, body {
   -webkit-app-region: no-drag;
 }
 
-/* Botones de Iconos */
+/* Botones de Control */
 .btn-icon {
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
   width: 28px;
   height: 28px;
-  border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
+  background: var(--bg-glass-card);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-sm);
+  color: var(--text-main);
   cursor: pointer;
   transition: all var(--transition-fast);
+  font-size: 13px;
+  -webkit-app-region: no-drag !important;
+  pointer-events: auto !important;
 }
 
 .btn-icon:hover {
   background: var(--bg-glass-card-hover);
-  color: var(--text-main);
+  border-color: var(--border-glass-bright);
+  transform: translateY(-1px);
 }
 
 .btn-icon.active {
-  background: rgba(56, 189, 248, 0.2);
+  background: var(--accent-glow);
+  border-color: var(--accent-primary);
   color: var(--accent-primary);
 }
 
-.btn-close:hover {
-  background: rgba(239, 68, 68, 0.85);
+.btn-icon.btn-close:hover {
+  background: var(--accent-danger);
+  border-color: var(--accent-danger);
   color: #FFFFFF;
 }
 
-/* Toolbar Superior */
+.btn-primary {
+  background: var(--accent-primary);
+  color: #0F172A;
+  font-weight: 600;
+  font-size: 12px;
+  border: none;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  box-shadow: 0 2px 8px var(--accent-glow);
+  -webkit-app-region: no-drag;
+}
+
+.btn-primary:hover {
+  filter: brightness(1.1);
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: var(--bg-glass-card);
+  border: 1px solid var(--border-glass);
+  color: var(--text-main);
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  -webkit-app-region: no-drag;
+}
+
+.btn-secondary:hover {
+  background: var(--bg-glass-card-hover);
+  border-color: var(--border-glass-bright);
+}
+
+/* Barra de Herramientas (Toolbar) */
 .toolbar {
+  height: 48px;
+  min-height: 48px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border-glass-subtle);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 14px;
-  background: rgba(0, 0, 0, 0.05);
-  border-bottom: 1px solid var(--border-glass-subtle);
+  padding: 0 14px;
   gap: 12px;
+  z-index: 90;
 }
 
 .toolbar-group {
@@ -186,21 +234,22 @@ html, body {
   gap: 8px;
 }
 
-/* Selectores e Inputs */
 .select-input, .text-input {
   background: var(--bg-glass-card);
   border: 1px solid var(--border-glass);
-  color: var(--text-main);
-  padding: 5px 10px;
   border-radius: var(--radius-sm);
-  outline: none;
+  color: var(--text-main);
+  font-size: 12px;
   font-family: inherit;
-  font-size: 13px;
-  transition: border-color var(--transition-fast);
+  padding: 6px 10px;
+  outline: none;
+  transition: all var(--transition-fast);
+  -webkit-app-region: no-drag;
 }
 
 .select-input:focus, .text-input:focus {
   border-color: var(--accent-primary);
+  box-shadow: 0 0 0 2px var(--accent-glow);
 }
 
 .select-input option {
@@ -208,43 +257,7 @@ html, body {
   color: #F8FAFC;
 }
 
-/* Botones Principales */
-.btn-primary {
-  background: var(--accent-primary);
-  color: #0F172A;
-  font-weight: 600;
-  border: none;
-  padding: 6px 14px;
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  font-size: 13px;
-  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
-}
-
-.btn-primary:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 14px var(--accent-glow);
-}
-
-.btn-secondary {
-  background: var(--bg-glass-card);
-  border: 1px solid var(--border-glass);
-  color: var(--text-main);
-  padding: 5px 12px;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  font-size: 13px;
-  transition: background var(--transition-fast);
-}
-
-.btn-secondary:hover {
-  background: var(--bg-glass-card-hover);
-}
-
-/* Área Principal del Diagrama de Gantt */
+/* Área de Trabajo del Diagrama de Gantt */
 .gantt-main-container {
   flex: 1;
   display: flex;
@@ -253,24 +266,31 @@ html, body {
   position: relative;
 }
 
-/* Cabecera del Timeline */
+/* Cabecera Temporal */
 .timeline-header-wrapper {
   display: flex;
-  border-bottom: 1px solid var(--border-glass-bright);
-  background: rgba(0, 0, 0, 0.1);
+  height: 42px;
+  min-height: 42px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--grid-line);
+  z-index: 50;
 }
 
 .timeline-task-column-header {
   width: 220px;
   min-width: 220px;
-  padding: 10px 14px;
+  border-right: 1px solid var(--grid-line);
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  font-size: 12px;
   font-weight: 600;
   color: var(--text-muted);
-  border-right: 1px solid var(--border-glass);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .timeline-dates-header {
-  flex: 1;
   display: flex;
   overflow: hidden;
 }
@@ -280,7 +300,6 @@ html, body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 6px 4px;
   border-right: 1px solid var(--grid-line);
   font-size: 11px;
 }
@@ -295,23 +314,28 @@ html, body {
 }
 
 .timeline-date-col .secondary-date {
+  font-size: 10px;
   color: var(--text-dim);
 }
 
-/* Cuerpo con Scroll del Gantt */
+/* Cuerpo del Gantt Scrolleable */
 .gantt-body-wrapper {
   flex: 1;
   display: flex;
-  overflow-y: auto;
   overflow-x: auto;
+  overflow-y: auto;
   position: relative;
 }
 
+/* Columna Lateral de Tareas */
 .task-list-panel {
   width: 220px;
   min-width: 220px;
-  border-right: 1px solid var(--border-glass);
-  background: rgba(0, 0, 0, 0.05);
+  border-right: 1px solid var(--grid-line);
+  background: var(--bg-panel);
+  position: sticky;
+  left: 0;
+  z-index: 40;
 }
 
 .task-row-label {
@@ -321,61 +345,66 @@ html, body {
   justify-content: space-between;
   padding: 0 14px;
   border-bottom: 1px solid var(--grid-line);
-  font-size: 13px;
+  font-size: 12px;
+  font-weight: 500;
   color: var(--text-main);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  cursor: pointer;
+  transition: background var(--transition-fast);
 }
 
+.task-row-label:hover {
+  background: var(--bg-glass-card-hover);
+}
+
+/* Panel de Cuadrícula y Barras */
 .task-grid-panel {
-  flex: 1;
   position: relative;
-  min-width: 800px;
+  flex-grow: 1;
 }
 
-/* Marcador de Fecha Actual (Now Line) */
+/* Marcador en Vivo (Now Line) */
 .now-marker-line {
   position: absolute;
   top: 0;
   bottom: 0;
   width: 2px;
   background: var(--now-line-color);
-  box-shadow: 0 0 10px var(--now-line-color);
-  z-index: 10;
+  z-index: 30;
   pointer-events: none;
+  box-shadow: 0 0 10px var(--now-line-color);
 }
 
 .now-marker-badge {
-  position: absolute;
+  position: sticky;
   top: 4px;
-  left: -20px;
+  left: -18px;
   background: var(--now-line-color);
   color: #FFFFFF;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
-  padding: 1px 6px;
-  border-radius: var(--radius-full);
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  letter-spacing: 0.5px;
 }
 
-/* Barras de Tareas en el Gantt */
+/* Barras de Actividades del Gantt */
 .gantt-task-bar {
   position: absolute;
   height: 28px;
   border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
-  padding: 0 8px;
+  padding: 0 10px;
   color: #FFFFFF;
-  font-weight: 500;
   font-size: 12px;
+  font-weight: 600;
   cursor: grab;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-  transition: box-shadow var(--transition-fast), transform var(--transition-fast);
-}
-
-.gantt-task-bar:active {
-  cursor: grabbing;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+  z-index: 20;
 }
 
 .gantt-task-bar:hover {
@@ -429,6 +458,18 @@ html, body {
   justify-content: space-between;
   padding: 0 12px;
   -webkit-app-region: drag;
+}
+
+#btn-widget-complete-task {
+  -webkit-app-region: no-drag !important;
+  pointer-events: auto !important;
+}
+
+#btn-mini-project-name, #btn-widget-prev, #btn-widget-next,
+#btn-mini-scroll-left, #btn-mini-scroll-right,
+#btn-widget-ghost, #btn-widget-expand, #btn-widget-close {
+  -webkit-app-region: no-drag !important;
+  pointer-events: auto !important;
 }
 
 .mini-widget-carousel {
