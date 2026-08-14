@@ -1,7 +1,8 @@
 import { storageService } from './services/storage';
 import { AppConfig } from '../types/config';
 import { ProjectsData, Project, Task } from '../types/project';
-import { formatDateISO, parseDateISO, diffDays, isWeekend, formatColumnHeader, generateTimelineColumns } from './services/dateUtils';
+import { formatDateISO, parseDateISO, diffDays } from './services/dateUtils';
+import { GanttChart } from './components/GanttChart';
 
 class App {
   private config!: AppConfig;
@@ -9,6 +10,7 @@ class App {
   private currentProject!: Project;
   private rootEl!: HTMLElement;
   private activeCarouselIndex = 0;
+  private ganttChart: GanttChart | null = null;
 
   public async init() {
     this.rootEl = document.getElementById('app-root')!;
@@ -20,7 +22,7 @@ class App {
     // Seleccionar proyecto activo
     this.currentProject = this.projectsData.projects.find(p => p.id === this.config.activeProjectId) || this.projectsData.projects[0];
 
-    // Aplicar tema y opacidad
+    // Aplicar tema y opacidad inicial
     this.applyTheme(this.config.theme);
     this.applyOpacity(this.config.opacity);
 
@@ -84,7 +86,7 @@ class App {
             ${task.title}
           </div>
           <div class="mini-widget-task-meta">
-            ${remaining === 0 ? '¡Vence hoy!' : remaining > 0 ? `Restan ${remaining} días` : 'Vencida'}
+            ${remaining === 0 ? '¡Vence hoy!' : remaining > 0 ? `Restan ${remaining} días` : '⚠️ Vencida'}
           </div>
         </div>
       `;
@@ -129,13 +131,6 @@ class App {
   }
 
   private renderExpandedGantt() {
-    const today = new Date();
-    const startDate = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 5);
-    const columns = generateTimelineColumns(startDate, 30, this.config.timeScale);
-    const colWidth = this.config.timeScale === 'days' ? 44 : 80;
-
-    const categoriesMap = new Map(this.currentProject.categories.map(c => [c.id, c]));
-
     this.rootEl.innerHTML = `
       <!-- TitleBar -->
       <div class="titlebar">
@@ -164,6 +159,10 @@ class App {
             <option value="months" ${this.config.timeScale === 'months' ? 'selected' : ''}>Meses</option>
           </select>
           <button class="btn-secondary" id="btn-today">📍 Hoy</button>
+          <div style="display: flex; gap: 2px;">
+            <button class="btn-icon" id="btn-zoom-in" title="Acercar zoom">+</button>
+            <button class="btn-icon" id="btn-zoom-out" title="Alejar zoom">-</button>
+          </div>
         </div>
 
         <div class="toolbar-group">
@@ -176,69 +175,23 @@ class App {
         </div>
       </div>
 
-      <!-- Área de Gantt -->
-      <div class="gantt-main-container">
-        <div class="timeline-header-wrapper">
-          <div class="timeline-task-column-header">Tareas (${this.currentProject.tasks.length})</div>
-          <div class="timeline-dates-header" id="dates-header">
-            ${columns.map(col => {
-              const header = formatColumnHeader(col, this.config.timeScale);
-              const isWk = this.config.highlightWeekends && isWeekend(col);
-              return `
-                <div class="timeline-date-col ${isWk ? 'weekend' : ''}" style="width: ${colWidth}px; min-width: ${colWidth}px;">
-                  <span class="primary-date">${header.primary}</span>
-                  <span class="secondary-date">${header.secondary}</span>
-                </div>
-              `;
-            }).join('')}
-          </div>
-        </div>
-
-        <div class="gantt-body-wrapper" id="gantt-body">
-          <div class="task-list-panel">
-            ${this.currentProject.tasks.map(t => {
-              const cat = categoriesMap.get(t.categoryId);
-              return `
-                <div class="task-row-label" title="${t.title}">
-                  <span style="border-left: 3px solid ${cat?.color || '#38BDF8'}; padding-left: 6px; overflow: hidden; text-overflow: ellipsis;">
-                    ${t.title}
-                  </span>
-                </div>
-              `;
-            }).join('')}
-          </div>
-
-          <div class="task-grid-panel" id="task-grid" style="width: ${columns.length * colWidth}px;">
-            <!-- Renderizado de Barras de Tareas -->
-            ${this.currentProject.tasks.map((t, idx) => {
-              const cat = categoriesMap.get(t.categoryId);
-              const tStart = parseDateISO(t.startDate);
-              const tEnd = parseDateISO(t.endDate);
-              const leftDays = diffDays(startDate, tStart);
-              const durDays = Math.max(1, diffDays(tStart, tEnd) + 1);
-
-              const leftPx = leftDays * colWidth;
-              const widthPx = durDays * colWidth - 6;
-              const topPx = idx * 42 + 7;
-
-              const isOverdue = t.status !== 'completed' && tEnd < today;
-              const statusClass = isOverdue ? 'status-overdue' : `status-${t.status}`;
-
-              return `
-                <div class="gantt-task-bar ${statusClass}" 
-                     data-task-id="${t.id}"
-                     style="left: ${leftPx}px; top: ${topPx}px; width: ${widthPx}px; background: ${cat?.color || '#3B82F6'};"
-                     title="${t.title} (${t.startDate} - ${t.endDate})">
-                  <div class="task-resize-handle left"></div>
-                  <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${t.title}</span>
-                  <div class="task-resize-handle right"></div>
-                </div>
-              `;
-            }).join('')}
-          </div>
-        </div>
-      </div>
+      <!-- Área de Gantt Montada Dinámicamente -->
+      <div class="gantt-main-container" id="gantt-container"></div>
     `;
+
+    // Montar motor GanttChart
+    const ganttContainer = document.getElementById('gantt-container')!;
+    this.ganttChart = new GanttChart({
+      container: ganttContainer,
+      project: this.currentProject,
+      config: this.config,
+      onTaskChange: (_updatedTask) => {
+        // Auto-save inmediato tras interacción Drag & Drop o Resize
+        storageService.saveProjects(this.projectsData);
+      }
+    });
+
+    this.ganttChart.render();
 
     // Eventos Toolbar y Ventana
     document.getElementById('btn-close-app')?.addEventListener('click', () => window.electronAPI?.closeWindow());
@@ -247,10 +200,23 @@ class App {
       window.electronAPI?.setIgnoreMouseEvents(true, false);
     });
 
+    document.getElementById('btn-today')?.addEventListener('click', () => {
+      this.ganttChart?.scrollToToday();
+    });
+
+    document.getElementById('btn-zoom-in')?.addEventListener('click', () => {
+      this.ganttChart?.zoom(8);
+    });
+
+    document.getElementById('btn-zoom-out')?.addEventListener('click', () => {
+      this.ganttChart?.zoom(-8);
+    });
+
     document.getElementById('btn-toggle-theme')?.addEventListener('click', () => {
       this.config.theme = this.config.theme === 'dark' ? 'light' : 'dark';
       this.applyTheme(this.config.theme);
       storageService.saveConfig(this.config);
+      this.ganttChart?.updateConfig(this.config);
     });
 
     document.getElementById('input-opacity')?.addEventListener('input', (e) => {
@@ -263,17 +229,28 @@ class App {
     document.getElementById('select-scale')?.addEventListener('change', (e) => {
       this.config.timeScale = (e.target as HTMLSelectElement).value as any;
       storageService.saveConfig(this.config);
-      this.render();
+      this.ganttChart?.updateConfig(this.config);
+    });
+
+    document.getElementById('select-project')?.addEventListener('change', (e) => {
+      const projId = (e.target as HTMLSelectElement).value;
+      const proj = this.projectsData.projects.find(p => p.id === projId);
+      if (proj) {
+        this.currentProject = proj;
+        this.config.activeProjectId = proj.id;
+        storageService.saveConfig(this.config);
+        this.ganttChart?.updateProject(this.currentProject);
+      }
     });
 
     document.getElementById('btn-new-task')?.addEventListener('click', () => {
-      const title = prompt('Título de la nueva tarea:');
-      if (title) {
+      const title = prompt('Título de la nueva actividad:');
+      if (title && title.trim()) {
         const todayStr = formatDateISO(new Date());
         const nextWeekStr = formatDateISO(new Date(Date.now() + 5 * 86400000));
         const newTask: Task = {
           id: `tsk-${Date.now()}`,
-          title,
+          title: title.trim(),
           categoryId: this.currentProject.categories[0]?.id || 'cat-1',
           startDate: todayStr,
           endDate: nextWeekStr,
@@ -281,7 +258,7 @@ class App {
         };
         this.currentProject.tasks.push(newTask);
         storageService.saveProjects(this.projectsData);
-        this.render();
+        this.ganttChart?.updateProject(this.currentProject);
       }
     });
   }
