@@ -5,6 +5,7 @@ import { setupSystemTray, updateTrayGhostState } from './tray';
 import { checkForAppUpdates, downloadAndInstallUpdate } from './autoUpdater';
 
 let mainWindow: BrowserWindow | null = null;
+let isCurrentlyCompact = false;
 
 // Rutas de almacenamiento local desacoplado
 const userDataPath = path.join(app.getPath('appData'), 'floating-personal-gantt');
@@ -67,7 +68,7 @@ function writeProjectsFile(data: unknown): boolean {
 
 function createWindow() {
   const initialConfig = readConfigFile();
-  const isCompact = initialConfig.compactMode === true;
+  isCurrentlyCompact = initialConfig.compactMode === true;
   const primaryDisplay = screen.getPrimaryDisplay();
   const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
 
@@ -84,35 +85,39 @@ function createWindow() {
   const windowBounds = (initialConfig.windowBounds as { x?: number; y?: number; width?: number; height?: number }) || {};
   const miniBounds = (initialConfig.miniBounds as { x?: number; y?: number }) || {};
 
-  const currentX = isCompact 
+  const currentX = isCurrentlyCompact 
     ? (typeof miniBounds.x === 'number' ? miniBounds.x : defaultMiniX)
     : (typeof windowBounds.x === 'number' ? windowBounds.x : defaultNormalX);
 
-  const currentY = isCompact 
+  const currentY = isCurrentlyCompact 
     ? (typeof miniBounds.y === 'number' ? miniBounds.y : defaultMiniY)
     : (typeof windowBounds.y === 'number' ? windowBounds.y : defaultNormalY);
 
-  const currentW = isCompact ? defaultMiniWidth : (typeof windowBounds.width === 'number' ? windowBounds.width : defaultNormalWidth);
-  const currentH = isCompact ? defaultMiniHeight : (typeof windowBounds.height === 'number' ? windowBounds.height : defaultNormalHeight);
+  const currentW = isCurrentlyCompact 
+    ? defaultMiniWidth 
+    : ((typeof windowBounds.width === 'number' && windowBounds.width >= 960) ? windowBounds.width : defaultNormalWidth);
+  const currentH = isCurrentlyCompact 
+    ? defaultMiniHeight 
+    : ((typeof windowBounds.height === 'number' && windowBounds.height >= 480) ? windowBounds.height : defaultNormalHeight);
 
   mainWindow = new BrowserWindow({
     x: currentX,
     y: currentY,
     width: currentW,
     height: currentH,
-    minWidth: isCompact ? defaultMiniWidth : 960,
-    minHeight: isCompact ? defaultMiniHeight : 480,
-    maxWidth: isCompact ? defaultMiniWidth : undefined,
-    maxHeight: isCompact ? defaultMiniHeight : undefined,
+    minWidth: isCurrentlyCompact ? defaultMiniWidth : 960,
+    minHeight: isCurrentlyCompact ? defaultMiniHeight : 480,
+    maxWidth: isCurrentlyCompact ? defaultMiniWidth : undefined,
+    maxHeight: isCurrentlyCompact ? defaultMiniHeight : undefined,
     frame: false,
     transparent: true,
     thickFrame: false,
-    alwaysOnTop: isCompact,
-    resizable: !isCompact,
-    maximizable: !isCompact,
+    alwaysOnTop: isCurrentlyCompact,
+    resizable: !isCurrentlyCompact,
+    maximizable: !isCurrentlyCompact,
     hasShadow: true,
     skipTaskbar: false,
-    opacity: isCompact ? Math.max(0.05, Math.min(1.0, (initialConfig.opacity as number) || 0.92)) : 1.0,
+    opacity: isCurrentlyCompact ? Math.max(0.05, Math.min(1.0, (initialConfig.opacity as number) || 0.92)) : 1.0,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
@@ -121,16 +126,14 @@ function createWindow() {
   });
 
   mainWindow.on('will-resize', (e) => {
-    const cfg = readConfigFile();
-    if (cfg.compactMode === true) {
+    if (isCurrentlyCompact) {
       e.preventDefault();
     }
   });
 
   mainWindow.on('resize', () => {
     if (mainWindow && !mainWindow.isDestroyed()) {
-      const cfg = readConfigFile();
-      if (cfg.compactMode === true) {
+      if (isCurrentlyCompact) {
         const [currentW, currentH] = mainWindow.getSize();
         if (currentW !== 560 || currentH !== 85) {
           mainWindow.setContentSize(560, 85, false);
@@ -139,11 +142,12 @@ function createWindow() {
     }
   });
 
+  // Guardar posición desacoplada al mover
   mainWindow.on('moved', () => {
     if (mainWindow && !mainWindow.isDestroyed()) {
       const currentBounds = mainWindow.getBounds();
       const cfg = readConfigFile();
-      if (cfg.compactMode === true) {
+      if (isCurrentlyCompact) {
         cfg.miniBounds = { x: currentBounds.x, y: currentBounds.y };
       } else {
         cfg.windowBounds = currentBounds;
@@ -154,8 +158,8 @@ function createWindow() {
 
   mainWindow.on('resized', () => {
     if (mainWindow && !mainWindow.isDestroyed()) {
-      const cfg = readConfigFile();
-      if (cfg.compactMode !== true) {
+      if (!isCurrentlyCompact) {
+        const cfg = readConfigFile();
         cfg.windowBounds = mainWindow.getBounds();
         writeConfigFile(cfg);
       }
@@ -186,6 +190,8 @@ function setupIpcHandlers() {
   ipcMain.handle('storage:loadProjects', () => readProjectsFile());
   ipcMain.handle('storage:saveProjects', (_event, data) => writeProjectsFile(data));
 
+  ipcMain.handle('app:getVersion', () => app.getVersion() || '0.6.3');
+
   ipcMain.handle('window:getBounds', () => {
     return mainWindow ? mainWindow.getBounds() : { x: 0, y: 0, width: 1020, height: 580 };
   });
@@ -198,8 +204,7 @@ function setupIpcHandlers() {
 
   ipcMain.handle('window:setAlwaysOnTop', (_event, always) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
-      const cfg = readConfigFile();
-      if (cfg.compactMode) {
+      if (isCurrentlyCompact) {
         mainWindow.setAlwaysOnTop(always, 'floating');
       } else {
         mainWindow.setAlwaysOnTop(false);
@@ -209,8 +214,7 @@ function setupIpcHandlers() {
 
   ipcMain.handle('window:setOpacity', (_event, opacity) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
-      const cfg = readConfigFile();
-      if (cfg.compactMode) {
+      if (isCurrentlyCompact) {
         mainWindow.setOpacity(Math.max(0.05, Math.min(1.0, opacity)));
       } else {
         mainWindow.setOpacity(1.0);
@@ -227,11 +231,14 @@ function setupIpcHandlers() {
 
   ipcMain.handle('window:setCompactMode', (_event, compact) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
+      isCurrentlyCompact = compact;
       const cfg = readConfigFile();
+      cfg.compactMode = compact;
       const primaryDisplay = screen.getPrimaryDisplay();
       const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
 
       if (compact) {
+        // Guardar bounds normales antes de pasar a mini
         const normalBounds = mainWindow.getBounds();
         cfg.windowBounds = normalBounds;
         writeConfigFile(cfg);
@@ -251,19 +258,20 @@ function setupIpcHandlers() {
         const currentOpacity = typeof cfg.opacity === 'number' ? cfg.opacity : 0.92;
         mainWindow.setOpacity(Math.max(0.05, Math.min(1.0, currentOpacity)));
       } else {
+        // Guardar bounds mini
         const currentMiniBounds = mainWindow.getBounds();
         cfg.miniBounds = { x: currentMiniBounds.x, y: currentMiniBounds.y };
         writeConfigFile(cfg);
 
         const windowBounds = (cfg.windowBounds as { x?: number; y?: number; width?: number; height?: number }) || {};
-        const targetW = typeof windowBounds.width === 'number' ? windowBounds.width : 1020;
-        const targetH = typeof windowBounds.height === 'number' ? windowBounds.height : 580;
+        const targetW = (typeof windowBounds.width === 'number' && windowBounds.width >= 960) ? windowBounds.width : 1020;
+        const targetH = (typeof windowBounds.height === 'number' && windowBounds.height >= 480) ? windowBounds.height : 580;
         const targetX = typeof windowBounds.x === 'number' ? windowBounds.x : Math.round((screenWidth - targetW) / 2);
         const targetY = typeof windowBounds.y === 'number' ? windowBounds.y : Math.round((screenHeight - targetH) / 2);
 
         mainWindow.setAlwaysOnTop(false);
         mainWindow.setMinimumSize(960, 480);
-        mainWindow.setMaximumSize(3840, 2160);
+        mainWindow.setMaximumSize(10000, 10000);
         mainWindow.setResizable(true);
         mainWindow.setMaximizable(true);
         mainWindow.setBounds({ x: targetX, y: targetY, width: targetW, height: targetH });

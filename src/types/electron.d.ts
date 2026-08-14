@@ -17,6 +17,9 @@ export interface ElectronAPI {
   loadProjects: () => Promise<ProjectsData>;
   saveProjects: (data: ProjectsData) => Promise<boolean>;
 
+  // Información de la Aplicación
+  getAppVersion: () => Promise<string>;
+
   // Gestión de Ventana
   setWindowBounds: (bounds: Partial<WindowBounds>) => Promise<void>;
   getWindowBounds: () => Promise<WindowBounds>;

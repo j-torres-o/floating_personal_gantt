@@ -142,8 +142,15 @@ class App {
     this.activeUpdateModal.open();
   }
 
-  private openAboutModal() {
-    const currentVer = this.config.version || '0.5.1';
+  private async openAboutModal() {
+    let currentVer = '0.6.3';
+    if (window.electronAPI?.getAppVersion) {
+      try {
+        currentVer = await window.electronAPI.getAppVersion();
+      } catch {
+        currentVer = '0.6.3';
+      }
+    }
     const modal = new AboutModal({
       currentVersion: currentVer,
       onCheckUpdates: async () => {
