@@ -149,21 +149,12 @@ export class MiniWidget {
     }
 
     this.container.innerHTML = `
-      <div class="mini-widget-container" style="padding: 6px 10px; height: 100%; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; gap: 8px; -webkit-app-region: drag;">
+      <div class="mini-widget-container" style="padding: 6px 10px; height: 100%; box-sizing: border-box; display: flex; align-items: center; justify-content: space-between; gap: 8px; -webkit-app-region: drag; position: relative;">
         <!-- Columna Izquierda: Selector de Proyecto arriba + Carrusel abajo -->
         <div style="display: flex; flex-direction: column; gap: 3px; width: 120px; min-width: 120px; -webkit-app-region: no-drag; position: relative;">
-          <button class="btn-secondary" id="btn-mini-project-name" style="font-size: 10px; font-weight: 600; padding: 2px 6px; height: 20px; border-radius: 4px; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; background: rgba(255,255,255,0.06); cursor: pointer;">
+          <button class="btn-secondary" id="btn-mini-project-name" style="font-size: 10px; font-weight: 600; padding: 2px 6px; height: 20px; border-radius: 4px; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; background: rgba(255,255,255,0.06); cursor: pointer;" title="Cambiar de proyecto">
             ${this.project.name} ▾
           </button>
-          
-          <!-- Popover Flotante de Proyectos con Scroll Vertical -->
-          <div id="mini-project-dropdown" style="display: ${this.isProjectMenuOpen ? 'flex' : 'none'}; position: absolute; top: 24px; left: 0; background: var(--bg-panel); border: 1px solid var(--border-glass-bright); border-radius: 8px; box-shadow: 0 12px 30px rgba(0,0,0,0.65); z-index: 9999; min-width: 170px; max-height: 140px; overflow-y: auto; flex-direction: column; padding: 4px; gap: 2px;">
-            ${this.allProjects.map(p => `
-              <div class="menu-item" data-project-id="${p.id}" style="padding: 6px 8px; font-size: 11px; border-radius: 4px; cursor: pointer; color: ${p.id === this.project.id ? 'var(--accent-primary)' : 'var(--text-main)'}; font-weight: ${p.id === this.project.id ? '600' : '400'}; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                ${p.name}
-              </div>
-            `).join('')}
-          </div>
 
           ${total > 1 ? `
             <div style="display: flex; align-items: center; justify-content: space-between; gap: 2px; width: 100%;">
@@ -186,6 +177,61 @@ export class MiniWidget {
           <button class="btn-icon" id="btn-widget-ghost" title="Modo Fantasma (Click-Through)">👻</button>
           <button class="btn-icon btn-close" id="btn-widget-close" title="Cerrar">✕</button>
         </div>
+
+        <!-- Modal Overlay Interno Glassmorphism para Selección Cómoda de Proyectos -->
+        ${this.isProjectMenuOpen ? `
+          <div class="mini-widget-project-overlay" style="
+            position: absolute;
+            inset: 0;
+            background: var(--bg-panel);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: var(--radius-md);
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            padding: 8px 12px;
+            justify-content: space-between;
+            -webkit-app-region: no-drag;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+            animation: fadeIn 0.1s ease-out;
+          ">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px;">
+              <span style="font-size: 11px; font-weight: 700; color: var(--accent-primary); text-transform: uppercase; letter-spacing: 0.5px;">
+                Seleccionar Proyecto (${this.allProjects.length})
+              </span>
+              <button class="btn-icon" id="btn-close-mini-projects" style="width: 22px; height: 22px; font-size: 12px; cursor: pointer;">✕</button>
+            </div>
+            <div style="
+              display: flex;
+              align-items: center;
+              gap: 6px;
+              overflow-x: auto;
+              overflow-y: hidden;
+              padding: 2px 0 4px 0;
+              width: 100%;
+            ">
+              ${this.allProjects.map(p => `
+                <button class="btn-secondary mini-project-item" data-project-id="${p.id}" style="
+                  font-size: 11px;
+                  padding: 4px 12px;
+                  height: 28px;
+                  border-radius: 6px;
+                  white-space: nowrap;
+                  background: ${p.id === this.project.id ? 'var(--accent-glow)' : 'rgba(255,255,255,0.06)'};
+                  border: 1px solid ${p.id === this.project.id ? 'var(--accent-primary)' : 'var(--border-glass)'};
+                  color: ${p.id === this.project.id ? 'var(--accent-primary)' : 'var(--text-main)'};
+                  font-weight: ${p.id === this.project.id ? '700' : '500'};
+                  cursor: pointer;
+                  flex-shrink: 0;
+                  transition: all 0.15s ease;
+                ">
+                  ${p.id === this.project.id ? '✓ ' : ''}${p.name}
+                </button>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
       </div>
     `;
 
@@ -204,11 +250,17 @@ export class MiniWidget {
 
     this.container.querySelector('#btn-mini-project-name')?.addEventListener('click', (e) => {
       e.stopPropagation();
-      this.isProjectMenuOpen = !this.isProjectMenuOpen;
+      this.isProjectMenuOpen = true;
       this.render();
     });
 
-    const projectItems = this.container.querySelectorAll('#mini-project-dropdown .menu-item');
+    this.container.querySelector('#btn-close-mini-projects')?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.isProjectMenuOpen = false;
+      this.render();
+    });
+
+    const projectItems = this.container.querySelectorAll('.mini-project-item');
     projectItems.forEach(item => {
       item.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -219,18 +271,6 @@ export class MiniWidget {
         }
       });
     });
-
-    // Cerrar menú de proyectos al hacer clic en cualquier otro lugar
-    window.addEventListener('click', (e) => {
-      if (this.isProjectMenuOpen) {
-        const dropdown = this.container.querySelector('#mini-project-dropdown');
-        const btn = this.container.querySelector('#btn-mini-project-name');
-        if (dropdown && !dropdown.contains(e.target as Node) && !btn?.contains(e.target as Node)) {
-          this.isProjectMenuOpen = false;
-          this.render();
-        }
-      }
-    }, { once: true });
 
     this.container.querySelector('#btn-widget-prev')?.addEventListener('click', (e) => {
       e.stopPropagation();
