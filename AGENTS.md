@@ -54,7 +54,16 @@ npm run package:win
 
 4. **Flujo de Git y Manejo de Ramas (Git Flow)**:
    - **NUNCA realizar commits directamente sobre la rama `main`**.
-   - Crear ramas descriptivas: `feat/nombre-funcionalidad`, `fix/correccion-bug`, `refactor/mejora-arquitectura`.
+   - **SEPARACIÓN ESTRICTA DE RAMAS POR TIPOLOGÍA**:
+     - Cada Pull Request y rama de trabajo debe tener **un único propósito temático**.
+     - **NUNCA mezclar** correcciones de errores (`fix/`), nuevas características (`feat/`), refactorizaciones (`refactor/`) o documentación (`docs/`) en una misma rama o commit.
+   - Tipología estándar de ramas:
+     - `feat/nombre-funcionalidad`: Exclusivo para nuevas capacidades funcionales.
+     - `fix/correccion-bug`: Exclusivo para solución de errores y bugs reportados.
+     - `refactor/mejora-arquitectura`: Exclusivo para reestructuración de código o UI sin alterar la lógica de negocio.
+     - `docs/documentacion-guia`: Exclusivo para guías, documentación y especificaciones.
+     - `style/ajuste-visual`: Exclusivo para formateo y retoques estéticos menores.
+     - `test/nuevas-pruebas`: Exclusivo para ampliación de suites de prueba.
    - Mensajes de commit bajo el estándar **Conventional Commits**:
      - `feat: ...` (nuevas características)
      - `fix: ...` (corrección de errores)
@@ -67,7 +76,7 @@ npm run package:win
 
 5. **Regla de Versionamiento Obligatoria (SemVer & GitHub Releases)**:
    - Todo cambio o Pull Request DEBE actualizar la versión en `package.json` antes de fusionar a `main`:
-     - **Corrección de errores (`fix:`)**: Incrementar versión `PATCH` (ej. `v0.1.0` -> `v0.1.1`).
-     - **Nueva funcionalidad (`feat:`)**: Incrementar versión `MINOR` (ej. `v0.1.x` -> `v0.2.0`).
+     - **Corrección de errores (`fix:`)**: Incrementar versión `PATCH` (ej. `v0.4.0` -> `v0.4.1`).
+     - **Nueva funcionalidad (`feat:`)**: Incrementar versión `MINOR` (ej. `v0.4.x` -> `v0.5.0`).
      - **Cambio mayor o de compatibilidad (`BREAKING CHANGE`)**: Incrementar versión `MAJOR` (ej. `v1.0.0`).
    - Tras fusionar un PR a `main`, se debe etiquetar y publicar la **Release Oficial en GitHub** con las notas de versión correspondientes.
