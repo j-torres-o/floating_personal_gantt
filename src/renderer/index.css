@@ -1,0 +1,474 @@
+/* ==========================================================================
+   Floating Personal Gantt - Glassmorphism Design System
+   ========================================================================== */
+
+:root {
+  /* Tipografía */
+  --font-sans: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* Tema Oscuro (Por defecto) */
+  --bg-app: rgba(15, 23, 42, 0.78);
+  --bg-app-hover: rgba(15, 23, 42, 0.88);
+  --bg-panel: rgba(30, 41, 59, 0.70);
+  --bg-glass-card: rgba(255, 255, 255, 0.05);
+  --bg-glass-card-hover: rgba(255, 255, 255, 0.09);
+  
+  --border-glass: rgba(255, 255, 255, 0.12);
+  --border-glass-bright: rgba(255, 255, 255, 0.22);
+  --border-glass-subtle: rgba(255, 255, 255, 0.06);
+
+  --text-main: #F8FAFC;
+  --text-muted: #94A3B8;
+  --text-dim: #64748B;
+
+  --accent-primary: #38BDF8;
+  --accent-glow: rgba(56, 189, 248, 0.35);
+  --accent-secondary: #34D399;
+  --accent-warning: #FBBF24;
+  --accent-danger: #F87171;
+
+  --weekend-bg: rgba(0, 0, 0, 0.18);
+  --grid-line: rgba(255, 255, 255, 0.05);
+  --now-line-color: #F43F5E;
+
+  /* Elevación y Efectos */
+  --glass-blur: blur(16px);
+  --glass-shadow: 0 12px 36px 0 rgba(0, 0, 0, 0.45);
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+  --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Tema Claro */
+body.theme-light {
+  --bg-app: rgba(248, 250, 252, 0.82);
+  --bg-app-hover: rgba(248, 250, 252, 0.92);
+  --bg-panel: rgba(241, 245, 249, 0.75);
+  --bg-glass-card: rgba(255, 255, 255, 0.65);
+  --bg-glass-card-hover: rgba(255, 255, 255, 0.85);
+
+  --border-glass: rgba(0, 0, 0, 0.08);
+  --border-glass-bright: rgba(0, 0, 0, 0.16);
+  --border-glass-subtle: rgba(0, 0, 0, 0.04);
+
+  --text-main: #0F172A;
+  --text-muted: #475569;
+  --text-dim: #94A3B8;
+
+  --accent-primary: #0284C7;
+  --accent-glow: rgba(2, 132, 199, 0.25);
+  --weekend-bg: rgba(0, 0, 0, 0.04);
+  --grid-line: rgba(0, 0, 0, 0.05);
+  --glass-shadow: 0 12px 32px 0 rgba(15, 23, 42, 0.15);
+}
+
+/* Reset y Base */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  user-select: none;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent !important;
+  font-family: var(--font-sans);
+  color: var(--text-main);
+  font-size: 14px;
+}
+
+/* Contenedor Principal de la App */
+.app-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-app);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--glass-shadow);
+  overflow: hidden;
+  position: relative;
+  transition: opacity var(--transition-normal), border-color var(--transition-normal);
+}
+
+/* Barra de Título Frameless */
+.titlebar {
+  height: 38px;
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  background: rgba(0, 0, 0, 0.12);
+  border-bottom: 1px solid var(--border-glass-subtle);
+  -webkit-app-region: drag; /* Permite arrastrar la ventana */
+}
+
+.titlebar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.app-badge {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--accent-primary);
+  background: rgba(56, 189, 248, 0.12);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+}
+
+.titlebar-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  -webkit-app-region: no-drag;
+}
+
+/* Botones de Iconos */
+.btn-icon {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.btn-icon:hover {
+  background: var(--bg-glass-card-hover);
+  color: var(--text-main);
+}
+
+.btn-icon.active {
+  background: rgba(56, 189, 248, 0.2);
+  color: var(--accent-primary);
+}
+
+.btn-close:hover {
+  background: rgba(239, 68, 68, 0.85);
+  color: #FFFFFF;
+}
+
+/* Toolbar Superior */
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background: rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid var(--border-glass-subtle);
+  gap: 12px;
+}
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Selectores e Inputs */
+.select-input, .text-input {
+  background: var(--bg-glass-card);
+  border: 1px solid var(--border-glass);
+  color: var(--text-main);
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  outline: none;
+  font-family: inherit;
+  font-size: 13px;
+  transition: border-color var(--transition-fast);
+}
+
+.select-input:focus, .text-input:focus {
+  border-color: var(--accent-primary);
+}
+
+.select-input option {
+  background: #1E293B;
+  color: #F8FAFC;
+}
+
+/* Botones Principales */
+.btn-primary {
+  background: var(--accent-primary);
+  color: #0F172A;
+  font-weight: 600;
+  border: none;
+  padding: 6px 14px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px var(--accent-glow);
+}
+
+.btn-secondary {
+  background: var(--bg-glass-card);
+  border: 1px solid var(--border-glass);
+  color: var(--text-main);
+  padding: 5px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 13px;
+  transition: background var(--transition-fast);
+}
+
+.btn-secondary:hover {
+  background: var(--bg-glass-card-hover);
+}
+
+/* Área Principal del Diagrama de Gantt */
+.gantt-main-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Cabecera del Timeline */
+.timeline-header-wrapper {
+  display: flex;
+  border-bottom: 1px solid var(--border-glass-bright);
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.timeline-task-column-header {
+  width: 220px;
+  min-width: 220px;
+  padding: 10px 14px;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-right: 1px solid var(--border-glass);
+}
+
+.timeline-dates-header {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.timeline-date-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 4px;
+  border-right: 1px solid var(--grid-line);
+  font-size: 11px;
+}
+
+.timeline-date-col.weekend {
+  background: var(--weekend-bg);
+}
+
+.timeline-date-col .primary-date {
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.timeline-date-col .secondary-date {
+  color: var(--text-dim);
+}
+
+/* Cuerpo con Scroll del Gantt */
+.gantt-body-wrapper {
+  flex: 1;
+  display: flex;
+  overflow-y: auto;
+  overflow-x: auto;
+  position: relative;
+}
+
+.task-list-panel {
+  width: 220px;
+  min-width: 220px;
+  border-right: 1px solid var(--border-glass);
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.task-row-label {
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--grid-line);
+  font-size: 13px;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.task-grid-panel {
+  flex: 1;
+  position: relative;
+  min-width: 800px;
+}
+
+/* Marcador de Fecha Actual (Now Line) */
+.now-marker-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--now-line-color);
+  box-shadow: 0 0 10px var(--now-line-color);
+  z-index: 10;
+  pointer-events: none;
+}
+
+.now-marker-badge {
+  position: absolute;
+  top: 4px;
+  left: -20px;
+  background: var(--now-line-color);
+  color: #FFFFFF;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+}
+
+/* Barras de Tareas en el Gantt */
+.gantt-task-bar {
+  position: absolute;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  color: #FFFFFF;
+  font-weight: 500;
+  font-size: 12px;
+  cursor: grab;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  transition: box-shadow var(--transition-fast), transform var(--transition-fast);
+}
+
+.gantt-task-bar:active {
+  cursor: grabbing;
+}
+
+.gantt-task-bar:hover {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+  transform: translateY(-1px);
+}
+
+/* Estados Visuales */
+.gantt-task-bar.status-pending {
+  border: 2px dashed rgba(255, 255, 255, 0.6);
+}
+
+.gantt-task-bar.status-in_progress {
+  animation: pulse-glow 2.5s infinite ease-in-out;
+}
+
+.gantt-task-bar.status-completed {
+  opacity: 0.55;
+  text-decoration: line-through;
+  filter: saturate(0.7);
+}
+
+.gantt-task-bar.status-overdue {
+  animation: pulse-danger 1.8s infinite ease-in-out;
+  border: 2px solid #EF4444;
+}
+
+/* Manijas de Redimensionamiento Lateral */
+.task-resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  cursor: ew-resize;
+}
+
+.task-resize-handle.left {
+  left: 0;
+}
+
+.task-resize-handle.right {
+  right: 0;
+}
+
+/* Mini-Widget HUD (Modo Encogido) */
+.mini-widget-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  -webkit-app-region: drag;
+}
+
+.mini-widget-carousel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+
+.mini-widget-task-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.mini-widget-task-title {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-main);
+}
+
+.mini-widget-task-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Animaciones */
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 10px rgba(56, 189, 248, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(56, 189, 248, 0.7);
+  }
+}
+
+@keyframes pulse-danger {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 18px rgba(239, 68, 68, 0.85);
+  }
+}
