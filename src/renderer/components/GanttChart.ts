@@ -188,7 +188,7 @@ export class GanttChart {
     ungroupedTasks.forEach(t => rows.push({ type: 'task', task: t, isIndented: false }));
 
     this.container.innerHTML = `
-      <div class="timeline-header-wrapper">
+      <div class="timeline-header-wrapper" style="display: flex; width: 100%; overflow: hidden;">
         <div class="timeline-task-column-header" style="width: ${taskListWidth}px; min-width: ${taskListWidth}px; max-width: ${taskListWidth}px; display: flex; align-items: center; justify-content: space-between; padding: 6px 12px; position: relative;">
           <span style="font-weight: 600; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">Actividades (${this.project.tasks.length})</span>
           <button class="btn-icon" id="btn-header-add-task" title="Crear nueva actividad" style="width: 24px; height: 24px; font-weight: 700; font-size: 14px; background: rgba(56,189,248,0.15); color: var(--accent-primary);">
@@ -196,18 +196,20 @@ export class GanttChart {
           </button>
         </div>
 
-        <div class="timeline-dates-header" style="width: ${totalGridWidth}px;">
-          ${columns.map(col => {
-            const header = formatColumnHeader(col, this.config.timeScale);
-            const isWk = this.config.highlightWeekends && isWeekend(col) && this.config.timeScale === 'days';
-            return `
-              <div class="timeline-date-col ${isWk ? 'weekend' : ''}" 
-                   style="width: ${this.columnWidth}px; min-width: ${this.columnWidth}px;">
-                <span class="primary-date">${header.primary}</span>
-                <span class="secondary-date">${header.secondary}</span>
-              </div>
-            `;
-          }).join('')}
+        <div class="timeline-dates-header-viewport" id="timeline-dates-viewport" style="flex: 1; overflow: hidden; position: relative;">
+          <div class="timeline-dates-header" id="timeline-dates-header" style="width: ${totalGridWidth}px; display: flex; transform: translateX(0px);">
+            ${columns.map(col => {
+              const header = formatColumnHeader(col, this.config.timeScale);
+              const isWk = this.config.highlightWeekends && isWeekend(col) && this.config.timeScale === 'days';
+              return `
+                <div class="timeline-date-col ${isWk ? 'weekend' : ''}" 
+                     style="width: ${this.columnWidth}px; min-width: ${this.columnWidth}px;">
+                  <span class="primary-date">${header.primary}</span>
+                  <span class="secondary-date">${header.secondary}</span>
+                </div>
+              `;
+            }).join('')}
+          </div>
         </div>
       </div>
 
@@ -260,10 +262,8 @@ export class GanttChart {
 
         <!-- Cuadrícula Temporal de Barras -->
         <div class="task-grid-panel" style="width: ${totalGridWidth}px; position: relative;">
-          <!-- Marcador en Vivo "Now Line" -->
-          <div class="now-marker-line" style="left: ${nowMarkerLeft}px;">
-            <span class="now-marker-badge">HOY</span>
-          </div>
+          <!-- Marcador en Vivo "Now Line" Limpio sin badge -->
+          <div class="now-marker-line" style="left: ${nowMarkerLeft}px;"></div>
 
           <!-- Columnas de Fondo de la Cuadrícula -->
           <div style="display: flex; position: absolute; top: 0; bottom: 0; left: 0; width: 100%; pointer-events: none;">
@@ -425,9 +425,16 @@ export class GanttChart {
       });
     });
 
-    // Zoom exclusivo con Ctrl + Wheel
+    // Zoom exclusivo con Ctrl + Wheel y sincronización de Scroll Horizontal
     const scrollBody = this.container.querySelector('#gantt-scroll-body') as HTMLElement;
+    const datesHeader = this.container.querySelector('#timeline-dates-header') as HTMLElement;
     if (scrollBody) {
+      scrollBody.addEventListener('scroll', () => {
+        if (datesHeader) {
+          datesHeader.style.transform = `translateX(-${scrollBody.scrollLeft}px)`;
+        }
+      }, { passive: true });
+
       scrollBody.addEventListener('wheel', (e: WheelEvent) => {
         if (e.ctrlKey) {
           e.preventDefault();
