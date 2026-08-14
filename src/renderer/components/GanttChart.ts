@@ -11,6 +11,7 @@ import {
 } from '../services/dateUtils';
 import { storageService } from '../services/storage';
 import { PromptModal } from './PromptModal';
+import { ConfirmModal } from './ConfirmModal';
 
 export interface GanttChartOptions {
   container: HTMLElement;
@@ -62,6 +63,8 @@ export class GanttChart {
     this.onTaskClick = options.onTaskClick;
     this.onTaskContextMenu = options.onTaskContextMenu;
     this.onNewTaskClick = options.onNewTaskClick;
+    this.onRenameGroup = options.onRenameGroup;
+    this.onDeleteGroup = options.onDeleteGroup;
 
     // Iniciar 7 días antes de la fecha actual para contexto
     const today = new Date();
@@ -358,9 +361,12 @@ export class GanttChart {
       const groupName = grpEl.getAttribute('data-group-name') || '';
       const tasksCount = parseInt(grpEl.getAttribute('data-tasks-count') || '0', 10);
 
-      // Doble clic para renombrar grupo con PromptModal interactivo
-      const titleWrapper = grpEl.querySelector('.group-title-wrapper');
-      titleWrapper?.addEventListener('dblclick', (e) => {
+      // Doble clic en cualquier parte del encabezado de grupo para renombrar con PromptModal
+      grpEl.addEventListener('dblclick', (e) => {
+        const target = e.target as HTMLElement;
+        if (target.classList.contains('btn-delete-group') || target.closest('.btn-delete-group')) {
+          return;
+        }
         e.stopPropagation();
         if (groupId && this.onRenameGroup) {
           const modal = new PromptModal({
@@ -378,19 +384,26 @@ export class GanttChart {
         }
       });
 
-      // Botón eliminar grupo
+      // Botón eliminar grupo con ConfirmModal interactivo
       const btnDelete = grpEl.querySelector('.btn-delete-group');
       btnDelete?.addEventListener('click', (e) => {
         e.stopPropagation();
+        e.preventDefault();
         if (!groupId || !this.onDeleteGroup) return;
 
         if (tasksCount === 0) {
           this.onDeleteGroup(groupId);
         } else {
-          const confirmed = confirm(`El grupo "${groupName}" contiene ${tasksCount} actividad(es) asociada(s). Si continúas, también se eliminarán dichas actividades. ¿Deseas continuar?`);
-          if (confirmed) {
-            this.onDeleteGroup(groupId);
-          }
+          const modal = new ConfirmModal({
+            title: 'Eliminar Grupo',
+            message: `El grupo "${groupName}" contiene ${tasksCount} actividad(es) asociada(s). Si continúas, también se eliminarán dichas actividades. ¿Deseas continuar?`,
+            confirmText: 'Eliminar',
+            isDanger: true,
+            onConfirm: () => {
+              this.onDeleteGroup!(groupId);
+            }
+          });
+          modal.open();
         }
       });
     });

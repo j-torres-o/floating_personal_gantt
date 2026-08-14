@@ -11,6 +11,7 @@ export interface PromptModalOptions {
 export class PromptModal {
   private options: PromptModalOptions;
   private modalEl: HTMLElement | null = null;
+  private keyHandler: ((e: KeyboardEvent) => void) | null = null;
 
   constructor(options: PromptModalOptions) {
     this.options = options;
@@ -51,6 +52,8 @@ export class PromptModal {
           <button class="btn-icon" id="prompt-modal-close" style="width: 24px; height: 24px;">✕</button>
         </div>
 
+        <div id="prompt-modal-error" style="display: none; font-size: 12px; color: #EF4444; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: 6px; padding: 6px 10px;"></div>
+
         <div style="display: flex; flex-direction: column; gap: 6px;">
           <label style="font-size: 12px; color: var(--text-muted);">${this.options.label}</label>
           <input type="text" id="prompt-modal-input" class="text-input" 
@@ -81,16 +84,25 @@ export class PromptModal {
     input.focus();
     input.select();
 
-    const keyHandler = (e: KeyboardEvent) => {
+    this.keyHandler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         this.close();
-        window.removeEventListener('keydown', keyHandler);
       } else if (e.key === 'Enter') {
         this.handleConfirm();
-        window.removeEventListener('keydown', keyHandler);
       }
     };
-    window.addEventListener('keydown', keyHandler);
+    window.addEventListener('keydown', this.keyHandler);
+  }
+
+  private showError(msg: string) {
+    if (!this.modalEl) return;
+    const errBox = this.modalEl.querySelector('#prompt-modal-error') as HTMLElement;
+    if (errBox) {
+      errBox.textContent = `⚠️ ${msg}`;
+      errBox.style.display = 'block';
+    }
+    const input = this.modalEl.querySelector('#prompt-modal-input') as HTMLInputElement;
+    if (input) input.focus();
   }
 
   private handleConfirm() {
@@ -98,7 +110,7 @@ export class PromptModal {
     const input = this.modalEl.querySelector('#prompt-modal-input') as HTMLInputElement;
     const val = input.value.trim();
     if (!val) {
-      alert('Por favor introduce un valor válido.');
+      this.showError('Por favor introduce un valor válido.');
       return;
     }
     this.options.onConfirm(val);
@@ -106,6 +118,10 @@ export class PromptModal {
   }
 
   public close() {
+    if (this.keyHandler) {
+      window.removeEventListener('keydown', this.keyHandler);
+      this.keyHandler = null;
+    }
     if (this.modalEl && this.modalEl.parentNode) {
       this.modalEl.parentNode.removeChild(this.modalEl);
       this.modalEl = null;

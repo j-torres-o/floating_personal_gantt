@@ -1,12 +1,20 @@
-import { Category, Task, TaskGroup, TaskStatus } from '../../types/project';
-import { formatDateISO } from '../services/dateUtils';
+import { Task, Category, TaskGroup, TaskStatus } from '../../types/project';
+import { formatDateISO, addDays } from '../services/dateUtils';
 
 export interface TaskModalOptions {
   task?: Task | null;
   categories: Category[];
-  groups?: TaskGroup[];
-  defaultStartDate?: string;
-  onSave: (taskData: Omit<Task, 'id'> & { id?: string; newGroupName?: string }) => void;
+  groups: TaskGroup[];
+  onSave: (taskData: {
+    id?: string;
+    title: string;
+    categoryId?: string;
+    groupId?: string;
+    newGroupName?: string;
+    startDate: string;
+    endDate: string;
+    status: TaskStatus;
+  }) => void;
   onDelete?: (taskId: string) => void;
   onClose: () => void;
 }
@@ -14,6 +22,7 @@ export interface TaskModalOptions {
 export class TaskModal {
   private options: TaskModalOptions;
   private modalEl: HTMLElement | null = null;
+  private keyHandler: ((e: KeyboardEvent) => void) | null = null;
 
   constructor(options: TaskModalOptions) {
     this.options = options;
@@ -22,16 +31,12 @@ export class TaskModal {
   public open() {
     const isEdit = !!this.options.task;
     const task = this.options.task;
-    const todayStr = formatDateISO(new Date());
-    const nextWeekStr = formatDateISO(new Date(Date.now() + 5 * 86400000));
 
-    const initialTitle = task?.title || '';
-    const initialCategoryId = task?.categoryId || ''; // Sin categoría por defecto
-    const initialGroupId = task?.groupId || '';
-    const initialStartDate = task?.startDate || this.options.defaultStartDate || todayStr;
-    const initialEndDate = task?.endDate || nextWeekStr;
-    const initialStatus: TaskStatus = task?.status || 'in_progress';
-    const groups = this.options.groups || [];
+    const todayISO = formatDateISO(new Date());
+    const initialStartDate = task ? task.startDate : todayISO;
+    const initialEndDate = task ? task.endDate : formatDateISO(addDays(new Date(), 5));
+    const initialStatus = task ? task.status : 'in_progress';
+    const initialGroupId = task ? task.groupId : '';
 
     this.modalEl = document.createElement('div');
     this.modalEl.className = 'modal-backdrop';
@@ -53,32 +58,39 @@ export class TaskModal {
         background: var(--bg-panel);
         border: 1px solid var(--border-glass-bright);
         border-radius: var(--radius-lg);
-        width: 400px;
+        width: 440px;
         max-width: 90vw;
-        padding: 20px;
+        padding: 24px;
         box-shadow: var(--glass-shadow);
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 14px;
         color: var(--text-main);
       ">
         <div style="display: flex; align-items: center; justify-content: space-between;">
-          <h3 style="font-size: 16px; font-weight: 600;">${isEdit ? 'Editar Actividad' : 'Nueva Actividad'}</h3>
+          <h3 style="font-size: 16px; font-weight: 600;">
+            ${isEdit ? 'Editar Actividad' : 'Nueva Actividad'}
+          </h3>
           <button class="btn-icon" id="modal-btn-close" style="width: 26px; height: 26px;">✕</button>
         </div>
 
+        <div id="modal-task-error" style="display: none; font-size: 12px; color: #EF4444; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: 6px; padding: 6px 10px;"></div>
+
         <div style="display: flex; flex-direction: column; gap: 4px;">
           <label style="font-size: 12px; color: var(--text-muted);">Nombre de la Actividad:</label>
-          <input type="text" id="modal-task-title" class="text-input" value="${initialTitle}" placeholder="Ej. Diseño de Maqueta" style="width: 100%;" autofocus />
+          <input type="text" id="modal-task-title" class="text-input" 
+                 placeholder="Ej. Diseño de Maqueta" 
+                 value="${task ? task.title : ''}" 
+                 style="width: 100%;" autofocus />
         </div>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
           <div style="display: flex; flex-direction: column; gap: 4px;">
             <label style="font-size: 12px; color: var(--text-muted);">Categoría:</label>
             <select id="modal-task-category" class="select-input" style="width: 100%;">
-              <option value="" ${!initialCategoryId ? 'selected' : ''}>Sin Categoría</option>
+              <option value="" ${!task?.categoryId ? 'selected' : ''}>Sin Categoría</option>
               ${this.options.categories.map(c => `
-                <option value="${c.id}" ${c.id === initialCategoryId ? 'selected' : ''}>${c.name}</option>
+                <option value="${c.id}" ${task?.categoryId === c.id ? 'selected' : ''}>${c.name}</option>
               `).join('')}
             </select>
           </div>
@@ -87,16 +99,17 @@ export class TaskModal {
             <label style="font-size: 12px; color: var(--text-muted);">Fase / Grupo:</label>
             <select id="modal-task-group" class="select-input" style="width: 100%;">
               <option value="" ${!initialGroupId ? 'selected' : ''}>Sin Grupo (General)</option>
-              ${groups.map(g => `
-                <option value="${g.id}" ${g.id === initialGroupId ? 'selected' : ''}>◈ ${g.name}</option>
+              ${this.options.groups.map(g => `
+                <option value="${g.id}" ${initialGroupId === g.id ? 'selected' : ''}>◈ ${g.name}</option>
               `).join('')}
-              <option value="__NEW_GROUP__">+ Nueva Fase/Grupo...</option>
+              <option value="__NEW_GROUP__">+ Crear Nuevo Grupo...</option>
             </select>
           </div>
         </div>
 
+        <!-- Input dinámico para nuevo grupo -->
         <div id="modal-new-group-container" style="display: none; flex-direction: column; gap: 4px;">
-          <label style="font-size: 12px; color: var(--accent-primary);">Nombre de la Nueva Fase/Grupo:</label>
+          <label style="font-size: 12px; color: var(--accent-primary); font-weight: 500;">Nombre del Nuevo Grupo / Fase:</label>
           <input type="text" id="modal-new-group-name" class="text-input" placeholder="Ej. Fase 2: Implementación" style="width: 100%; border-color: var(--accent-primary);" />
         </div>
 
@@ -168,43 +181,58 @@ export class TaskModal {
       this.handleSave(isEdit ? task?.id : undefined);
     });
 
-    const keyHandler = (e: KeyboardEvent) => {
+    const titleInput = this.modalEl.querySelector('#modal-task-title') as HTMLInputElement;
+    titleInput.focus();
+
+    this.keyHandler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         this.close();
-        window.removeEventListener('keydown', keyHandler);
       } else if (e.key === 'Enter' && (e.target as HTMLElement).tagName !== 'BUTTON') {
         this.handleSave(isEdit ? task?.id : undefined);
-        window.removeEventListener('keydown', keyHandler);
       }
     };
-    window.addEventListener('keydown', keyHandler);
+    window.addEventListener('keydown', this.keyHandler);
+  }
+
+  private showError(msg: string, focusEl?: HTMLElement) {
+    if (!this.modalEl) return;
+    const errBox = this.modalEl.querySelector('#modal-task-error') as HTMLElement;
+    if (errBox) {
+      errBox.textContent = `⚠️ ${msg}`;
+      errBox.style.display = 'block';
+    }
+    if (focusEl) {
+      focusEl.focus();
+    }
   }
 
   private handleSave(taskId?: string) {
     if (!this.modalEl) return;
 
-    const title = (this.modalEl.querySelector('#modal-task-title') as HTMLInputElement).value.trim();
+    const titleInput = this.modalEl.querySelector('#modal-task-title') as HTMLInputElement;
+    const title = titleInput.value.trim();
     const categoryIdVal = (this.modalEl.querySelector('#modal-task-category') as HTMLSelectElement).value;
     const groupSelect = this.modalEl.querySelector('#modal-task-group') as HTMLSelectElement;
-    const newGroupName = (this.modalEl.querySelector('#modal-new-group-name') as HTMLInputElement).value.trim();
+    const newGroupNameInput = this.modalEl.querySelector('#modal-new-group-name') as HTMLInputElement;
+    const newGroupName = newGroupNameInput ? newGroupNameInput.value.trim() : '';
     const startDate = (this.modalEl.querySelector('#modal-task-start') as HTMLInputElement).value;
     const endDate = (this.modalEl.querySelector('#modal-task-end') as HTMLInputElement).value;
     const status = (this.modalEl.querySelector('#modal-task-status') as HTMLSelectElement).value as TaskStatus;
 
     if (!title) {
-      alert('Por favor introduce un nombre para la actividad.');
+      this.showError('Por favor introduce un nombre para la actividad.', titleInput);
       return;
     }
 
     if (startDate > endDate) {
-      alert('La fecha de fin no puede ser anterior a la fecha de inicio.');
+      this.showError('La fecha de fin no puede ser anterior a la fecha de inicio.');
       return;
     }
 
     let finalGroupId: string | undefined = undefined;
     if (groupSelect.value === '__NEW_GROUP__') {
       if (!newGroupName) {
-        alert('Por favor introduce el nombre de la nueva fase/grupo.');
+        this.showError('Por favor introduce el nombre de la nueva fase/grupo.', newGroupNameInput);
         return;
       }
     } else if (groupSelect.value) {
@@ -214,7 +242,7 @@ export class TaskModal {
     this.options.onSave({
       id: taskId,
       title,
-      categoryId: categoryIdVal || undefined, // undefined si es Sin Categoría
+      categoryId: categoryIdVal || undefined,
       groupId: finalGroupId,
       newGroupName: groupSelect.value === '__NEW_GROUP__' ? newGroupName : undefined,
       startDate,
@@ -226,6 +254,10 @@ export class TaskModal {
   }
 
   public close() {
+    if (this.keyHandler) {
+      window.removeEventListener('keydown', this.keyHandler);
+      this.keyHandler = null;
+    }
     if (this.modalEl && this.modalEl.parentNode) {
       this.modalEl.parentNode.removeChild(this.modalEl);
       this.modalEl = null;

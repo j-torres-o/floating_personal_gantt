@@ -43,7 +43,8 @@ export class MiniWidget {
   }
 
   /**
-   * Obtiene EXCLUSIVAMENTE actividades NO finalizadas (pending o in_progress)
+   * Obtiene TODAS las actividades NO finalizadas (pending o in_progress),
+   * priorizando las que están en curso o caen en el día de hoy, y luego las futuras/vencidas.
    */
   public getTodayActiveTasks(): Task[] {
     const todayISO = formatDateISO(new Date());
@@ -51,20 +52,26 @@ export class MiniWidget {
     // Filtrar estrictamente excluyendo cualquier actividad completada
     const uncompletedTasks = (this.project.tasks || []).filter(t => t.status !== 'completed');
 
-    // 1. Actividades que caen en el día de hoy
-    const currentTasks = uncompletedTasks.filter(t => {
-      return t.startDate <= todayISO && t.endDate >= todayISO;
-    });
-
-    currentTasks.sort((a, b) => a.endDate.localeCompare(b.endDate));
-
-    if (currentTasks.length > 0) {
-      return currentTasks;
+    if (uncompletedTasks.length === 0) {
+      return [];
     }
 
-    // 2. Si no hay activas hoy, mostrar actividades pendientes futuras ordenadas por fecha
-    const upcomingTasks = uncompletedTasks.sort((a, b) => a.startDate.localeCompare(b.startDate));
-    return upcomingTasks;
+    // Ordenar con prioridad:
+    // 1. En curso ('in_progress')
+    // 2. Activas hoy (startDate <= hoy <= endDate)
+    // 3. Próximas pendientes ordenadas por fecha de inicio
+    return uncompletedTasks.sort((a, b) => {
+      const aIsToday = a.startDate <= todayISO && a.endDate >= todayISO;
+      const bIsToday = b.startDate <= todayISO && b.endDate >= todayISO;
+
+      if (a.status === 'in_progress' && b.status !== 'in_progress') return -1;
+      if (b.status === 'in_progress' && a.status !== 'in_progress') return 1;
+
+      if (aIsToday && !bIsToday) return -1;
+      if (!aIsToday && bIsToday) return 1;
+
+      return a.startDate.localeCompare(b.startDate);
+    });
   }
 
   public nextTask() {

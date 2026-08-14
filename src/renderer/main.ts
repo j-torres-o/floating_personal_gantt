@@ -9,6 +9,7 @@ import { ContextMenu } from './components/ContextMenu';
 import { AboutModal } from './components/AboutModal';
 import { UpdateModal } from './components/UpdateModal';
 import { PromptModal } from './components/PromptModal';
+import { ConfirmModal } from './components/ConfirmModal';
 import { exportGanttToPNG, exportToJSON, importFromJSON } from './services/exporter';
 import { UpdateInfoResult } from '../types/electron';
 
@@ -348,11 +349,18 @@ class App {
         this.refreshGanttView();
       },
       onDelete: (t) => {
-        if (confirm(`¿Eliminar la actividad "${t.title}"?`)) {
-          this.currentProject.tasks = this.currentProject.tasks.filter(item => item.id !== t.id);
-          storageService.saveProjects(this.projectsData);
-          this.refreshGanttView();
-        }
+        const modal = new ConfirmModal({
+          title: 'Eliminar Actividad',
+          message: `¿Estás seguro de eliminar la actividad "${t.title}"?`,
+          confirmText: 'Eliminar',
+          isDanger: true,
+          onConfirm: () => {
+            this.currentProject.tasks = this.currentProject.tasks.filter(item => item.id !== t.id);
+            storageService.saveProjects(this.projectsData);
+            this.refreshGanttView();
+          }
+        });
+        modal.open();
       },
       onClose: () => {}
     });
@@ -735,15 +743,22 @@ class App {
         ? `¿Estás seguro de eliminar el proyecto "${this.currentProject.name}" con sus ${tasksCount} actividad(es)? Esta acción no se puede deshacer.`
         : `¿Estás seguro de eliminar el proyecto "${this.currentProject.name}"?`;
 
-      if (confirm(confirmMsg)) {
-        const deletedId = this.currentProject.id;
-        this.projectsData.projects = this.projectsData.projects.filter(p => p.id !== deletedId);
-        this.currentProject = this.projectsData.projects[0];
-        this.config.activeProjectId = this.currentProject.id;
-        storageService.saveProjects(this.projectsData);
-        storageService.saveConfig(this.config);
-        this.render();
-      }
+      const modal = new ConfirmModal({
+        title: 'Eliminar Proyecto',
+        message: confirmMsg,
+        confirmText: 'Eliminar',
+        isDanger: true,
+        onConfirm: () => {
+          const deletedId = this.currentProject.id;
+          this.projectsData.projects = this.projectsData.projects.filter(p => p.id !== deletedId);
+          this.currentProject = this.projectsData.projects[0];
+          this.config.activeProjectId = this.currentProject.id;
+          storageService.saveProjects(this.projectsData);
+          storageService.saveConfig(this.config);
+          this.render();
+        }
+      });
+      modal.open();
     });
   }
 }

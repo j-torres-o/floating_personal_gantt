@@ -6,6 +6,7 @@ export interface ProjectModalOptions {
 export class ProjectModal {
   private options: ProjectModalOptions;
   private modalEl: HTMLElement | null = null;
+  private keyHandler: ((e: KeyboardEvent) => void) | null = null;
 
   constructor(options: ProjectModalOptions) {
     this.options = options;
@@ -46,6 +47,8 @@ export class ProjectModal {
           <button class="btn-icon" id="project-modal-close" style="width: 26px; height: 26px;">✕</button>
         </div>
 
+        <div id="project-modal-error" style="display: none; font-size: 12px; color: #EF4444; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: 6px; padding: 6px 10px;"></div>
+
         <div style="display: flex; flex-direction: column; gap: 6px;">
           <label style="font-size: 12px; color: var(--text-muted);">Nombre del Proyecto:</label>
           <input type="text" id="project-modal-name" class="text-input" placeholder="Ej. Lanzamiento Web 2026" style="width: 100%;" autofocus />
@@ -72,23 +75,33 @@ export class ProjectModal {
     const input = this.modalEl.querySelector('#project-modal-name') as HTMLInputElement;
     input.focus();
 
-    const keyHandler = (e: KeyboardEvent) => {
+    this.keyHandler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         this.close();
-        window.removeEventListener('keydown', keyHandler);
       } else if (e.key === 'Enter') {
         this.handleSave();
-        window.removeEventListener('keydown', keyHandler);
       }
     };
-    window.addEventListener('keydown', keyHandler);
+    window.addEventListener('keydown', this.keyHandler);
+  }
+
+  private showError(msg: string) {
+    if (!this.modalEl) return;
+    const errBox = this.modalEl.querySelector('#project-modal-error') as HTMLElement;
+    if (errBox) {
+      errBox.textContent = `⚠️ ${msg}`;
+      errBox.style.display = 'block';
+    }
+    const input = this.modalEl.querySelector('#project-modal-name') as HTMLInputElement;
+    if (input) input.focus();
   }
 
   private handleSave() {
     if (!this.modalEl) return;
-    const name = (this.modalEl.querySelector('#project-modal-name') as HTMLInputElement).value.trim();
+    const input = this.modalEl.querySelector('#project-modal-name') as HTMLInputElement;
+    const name = input.value.trim();
     if (!name) {
-      alert('Por favor introduce un nombre para el proyecto.');
+      this.showError('Por favor introduce un nombre para el proyecto.');
       return;
     }
     this.options.onSave(name);
@@ -96,6 +109,10 @@ export class ProjectModal {
   }
 
   public close() {
+    if (this.keyHandler) {
+      window.removeEventListener('keydown', this.keyHandler);
+      this.keyHandler = null;
+    }
     if (this.modalEl && this.modalEl.parentNode) {
       this.modalEl.parentNode.removeChild(this.modalEl);
       this.modalEl = null;
