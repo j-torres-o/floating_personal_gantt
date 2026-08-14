@@ -3,7 +3,7 @@
 [![CI Workflow](https://github.com/j-torres-o/floating_personal_gantt/actions/workflows/ci.yml/badge.svg)](https://github.com/j-torres-o/floating_personal_gantt/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows-0078D6.svg?logo=windows)](https://www.microsoft.com/windows)
-[![Version](https://img.shields.io/badge/Version-0.7.3-emerald.svg)](package.json)
+[![Version](https://img.shields.io/badge/Version-0.8.0-emerald.svg)](package.json)
 
 > **Floating Personal Gantt** es una aplicación de escritorio ultraligera, moderna y compacta para Windows diseñada para la planificación visual de tareas a mediano plazo mediante diagramas de Gantt interactivos con modo flotante (*Always-on-Top*), transparencias dinámicas y widget HUD colapsable.
 

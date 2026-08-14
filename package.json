@@ -1,6 +1,6 @@
 {
   "name": "floating-personal-gantt",
-  "version": "0.7.3",
+  "version": "0.8.0",
   "description": "Aplicación de escritorio ultra-ligera y moderna para Windows con diagrama de Gantt flotante, modo Click-Through, mini-widget HUD y persistencia desacoplada.",
   "main": "dist-electron/main/main.js",
   "scripts": {
@@ -36,17 +36,38 @@
   "build": {
     "appId": "com.jtorres.floatingpersonalgantt",
     "productName": "Floating Personal Gantt",
+    "icon": "build/icon.ico",
     "forceCodeSigning": false,
     "win": {
+      "icon": "build/icon.ico",
       "target": [
         "portable",
         "nsis"
       ],
       "signAndEditExecutable": false
     },
+    "nsis": {
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "shortcutName": "Floating Personal Gantt",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "extraResources": [
+      {
+        "from": "build/icon.ico",
+        "to": "build/icon.ico"
+      },
+      {
+        "from": "assets/icon.ico",
+        "to": "assets/icon.ico"
+      }
+    ],
     "files": [
       "dist/**/*",
-      "dist-electron/**/*"
+      "dist-electron/**/*",
+      "build/icon.ico",
+      "assets/icon.ico"
     ],
     "directories": {
       "output": "release"

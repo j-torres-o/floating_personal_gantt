@@ -1,20 +1,40 @@
 import { Tray, Menu, nativeImage, BrowserWindow, app, NativeImage } from 'electron';
+import * as path from 'path';
+import * as fs from 'fs';
 
 let tray: Tray | null = null;
 
 /**
- * Genera un icono PNG 32x32 con alta visibilidad para la bandeja del sistema de Windows
+ * Obtiene el icono nativo oficial para la bandeja del sistema
  */
 function createTrayIcon(): NativeImage {
-  // Generamos un icono en base64 de un PNG 32x32 con barras de color turquesa, esmeralda y ámbar sobre fondo transparente
-  // Usamos una data URL PNG válida de 32x32:
+  const possiblePaths = [
+    path.join(__dirname, '../../build/icon.ico'),
+    path.join(__dirname, '../../assets/icon.ico'),
+    path.join(__dirname, '../assets/icon.ico'),
+    path.join(process.resourcesPath, 'build/icon.ico'),
+    path.join(process.resourcesPath, 'assets/icon.ico'),
+    path.join(process.resourcesPath, 'app.asar.unpacked/build/icon.ico'),
+    path.join(app.getAppPath(), 'build/icon.ico'),
+    path.join(app.getAppPath(), 'assets/icon.ico')
+  ];
+
+  for (const p of possiblePaths) {
+    if (fs.existsSync(p)) {
+      const img = nativeImage.createFromPath(p);
+      if (!img.isEmpty()) {
+        return img;
+      }
+    }
+  }
+
+  // Fallback si no se encontrara el archivo físico
   const iconBase64 = 
     'iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABmJLR0QA/wD/AP+gvaeTAAAAbElEQVRYhe3WMQqAMBBE0Sd4/6uF' +
     'hRW2EawExUK2zSvhj2Y2wI8iAgCgUu/k2/mS41b3k+P1pA4w51rGvfsd4Oz7zXG99fGvAEgJyI8gAUgBkgBSAeQBSAKQACQCSAC' +
     'SAKQCKABk5/eS8kMA/7oBeM/E/3u88xIAAAAASUVORK5CYII=';
 
-  const image = nativeImage.createFromDataURL(`data:image/png;base64,${iconBase64}`);
-  return image;
+  return nativeImage.createFromDataURL(`data:image/png;base64,${iconBase64}`);
 }
 
 export function setupSystemTray(mainWindow: BrowserWindow): Tray {

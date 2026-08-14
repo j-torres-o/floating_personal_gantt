@@ -7,6 +7,23 @@ import { checkForAppUpdates, downloadAndInstallUpdate } from './autoUpdater';
 let mainWindow: BrowserWindow | null = null;
 let isCurrentlyCompact = false;
 
+export function getAppIconPath(): string {
+  const possiblePaths = [
+    path.join(__dirname, '../../build/icon.ico'),
+    path.join(__dirname, '../../assets/icon.ico'),
+    path.join(__dirname, '../assets/icon.ico'),
+    path.join(process.resourcesPath, 'build/icon.ico'),
+    path.join(process.resourcesPath, 'assets/icon.ico'),
+    path.join(process.resourcesPath, 'app.asar.unpacked/build/icon.ico'),
+    path.join(app.getAppPath(), 'build/icon.ico'),
+    path.join(app.getAppPath(), 'assets/icon.ico')
+  ];
+  for (const p of possiblePaths) {
+    if (fs.existsSync(p)) return p;
+  }
+  return path.join(__dirname, '../../build/icon.ico');
+}
+
 // Rutas de almacenamiento local desacoplado
 const userDataPath = path.join(app.getPath('appData'), 'floating-personal-gantt');
 const configFilePath = path.join(userDataPath, 'config.json');
@@ -100,6 +117,8 @@ function createWindow() {
     ? defaultMiniHeight 
     : ((typeof windowBounds.height === 'number' && windowBounds.height >= 480) ? windowBounds.height : defaultNormalHeight);
 
+  const appIconPath = getAppIconPath();
+
   mainWindow = new BrowserWindow({
     x: currentX,
     y: currentY,
@@ -112,6 +131,7 @@ function createWindow() {
     frame: false,
     transparent: true,
     thickFrame: false,
+    icon: appIconPath,
     alwaysOnTop: isCurrentlyCompact,
     resizable: !isCurrentlyCompact,
     maximizable: !isCurrentlyCompact,
@@ -320,6 +340,9 @@ function setupIpcHandlers() {
 }
 
 app.whenReady().then(() => {
+  if (process.platform === 'win32') {
+    app.setAppUserModelId('com.jtorres.floatingpersonalgantt');
+  }
   setupIpcHandlers();
   createWindow();
 
