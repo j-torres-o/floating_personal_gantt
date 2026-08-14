@@ -302,9 +302,7 @@ class App {
           id: `proj-${Date.now()}`,
           name: name.trim(),
           createdAt: new Date().toISOString(),
-          groups: [
-            { id: `grp-${Date.now()}-1`, name: 'Fase Inicial', color: '#8B5CF6' }
-          ],
+          groups: [], // Proyecto limpio sin grupos por defecto
           categories: [
             { id: `cat-${Date.now()}-1`, name: 'Desarrollo', color: '#3B82F6' },
             { id: `cat-${Date.now()}-2`, name: 'Diseño', color: '#10B981' }
@@ -484,7 +482,9 @@ class App {
                 <option value="${p.id}" ${p.id === this.currentProject.id ? 'selected' : ''}>${p.name}</option>
               `).join('')}
             </select>
-            <button class="btn-icon" id="btn-add-project" title="Crear nuevo proyecto">+</button>
+            <button class="btn-secondary" id="btn-add-project" title="Crear un nuevo proyecto" style="font-size: 11px; padding: 4px 8px;">Nuevo</button>
+            <button class="btn-secondary" id="btn-rename-project" title="Renombrar el proyecto actual" style="font-size: 11px; padding: 4px 8px;">Renombrar</button>
+            <button class="btn-secondary" id="btn-delete-project" title="Eliminar el proyecto actual" style="font-size: 11px; padding: 4px 8px;">Eliminar</button>
           </div>
 
           <select id="select-category-filter" class="select-input">
@@ -537,6 +537,20 @@ class App {
       },
       onNewTaskClick: () => {
         this.openTaskModal();
+      },
+      onRenameGroup: (groupId, newName) => {
+        const grp = (this.currentProject.groups || []).find(g => g.id === groupId);
+        if (grp) {
+          grp.name = newName;
+          storageService.saveProjects(this.projectsData);
+          this.refreshGanttView();
+        }
+      },
+      onDeleteGroup: (groupId) => {
+        this.currentProject.groups = (this.currentProject.groups || []).filter(g => g.id !== groupId);
+        this.currentProject.tasks = this.currentProject.tasks.filter(t => t.groupId !== groupId);
+        storageService.saveProjects(this.projectsData);
+        this.refreshGanttView();
       }
     });
 
@@ -667,6 +681,37 @@ class App {
 
     document.getElementById('btn-add-project')?.addEventListener('click', () => {
       this.openProjectModal();
+    });
+
+    document.getElementById('btn-rename-project')?.addEventListener('click', () => {
+      const newName = prompt('Introduce el nuevo nombre para el proyecto actual:', this.currentProject.name);
+      if (newName && newName.trim() && newName.trim() !== this.currentProject.name) {
+        this.currentProject.name = newName.trim();
+        storageService.saveProjects(this.projectsData);
+        this.render();
+      }
+    });
+
+    document.getElementById('btn-delete-project')?.addEventListener('click', () => {
+      if (this.projectsData.projects.length <= 1) {
+        alert('No es posible eliminar el único proyecto disponible.');
+        return;
+      }
+
+      const tasksCount = (this.currentProject.tasks || []).length;
+      const confirmMsg = tasksCount > 0
+        ? `¿Estás seguro de eliminar el proyecto "${this.currentProject.name}" con sus ${tasksCount} actividad(es)? Esta acción no se puede deshacer.`
+        : `¿Estás seguro de eliminar el proyecto "${this.currentProject.name}"?`;
+
+      if (confirm(confirmMsg)) {
+        const deletedId = this.currentProject.id;
+        this.projectsData.projects = this.projectsData.projects.filter(p => p.id !== deletedId);
+        this.currentProject = this.projectsData.projects[0];
+        this.config.activeProjectId = this.currentProject.id;
+        storageService.saveProjects(this.projectsData);
+        storageService.saveConfig(this.config);
+        this.render();
+      }
     });
   }
 }

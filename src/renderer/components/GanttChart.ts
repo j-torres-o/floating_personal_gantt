@@ -19,6 +19,8 @@ export interface GanttChartOptions {
   onTaskClick: (task: Task) => void;
   onTaskContextMenu: (task: Task, event: MouseEvent) => void;
   onNewTaskClick: () => void;
+  onRenameGroup?: (groupId: string, newName: string) => void;
+  onDeleteGroup?: (groupId: string) => void;
 }
 
 export class GanttChart {
@@ -29,6 +31,8 @@ export class GanttChart {
   private onTaskClick: (task: Task) => void;
   private onTaskContextMenu: (task: Task, event: MouseEvent) => void;
   private onNewTaskClick: () => void;
+  private onRenameGroup?: (groupId: string, newName: string) => void;
+  private onDeleteGroup?: (groupId: string) => void;
 
   // Estado del Gantt
   private startDate: Date;
@@ -149,8 +153,10 @@ export class GanttChart {
     // Estructurar actividades por Grupos / Fases
     interface DisplayRow {
       type: 'group_header' | 'task';
+      groupId?: string;
       groupName?: string;
       groupColor?: string;
+      tasksCount?: number;
       task?: Task;
       isIndented?: boolean;
     }
@@ -174,14 +180,14 @@ export class GanttChart {
     // Agregar filas agrupadas
     groups.forEach(grp => {
       const gTasks = tasksByGroup.get(grp.id) || [];
-      if (gTasks.length > 0 || groups.length > 0) {
-        rows.push({
-          type: 'group_header',
-          groupName: grp.name,
-          groupColor: grp.color || '#8B5CF6'
-        });
-        gTasks.forEach(t => rows.push({ type: 'task', task: t, isIndented: true }));
-      }
+      rows.push({
+        type: 'group_header',
+        groupId: grp.id,
+        groupName: grp.name,
+        groupColor: grp.color || '#8B5CF6',
+        tasksCount: gTasks.length
+      });
+      gTasks.forEach(t => rows.push({ type: 'task', task: t, isIndented: true }));
     });
 
     // Agregar actividades individuales (sin grupo)
@@ -219,11 +225,12 @@ export class GanttChart {
           ${rows.map(row => {
             if (row.type === 'group_header') {
               return `
-                <div class="task-row-group-header" style="
+                <div class="task-row-group-header" data-group-id="${row.groupId}" data-group-name="${row.groupName}" data-tasks-count="${row.tasksCount || 0}" style="
                   height: 32px;
                   display: flex;
                   align-items: center;
-                  padding: 0 12px;
+                  justify-content: space-between;
+                  padding: 0 8px 0 12px;
                   background: rgba(255, 255, 255, 0.04);
                   border-bottom: 1px solid var(--grid-line);
                   font-size: 11px;
@@ -231,10 +238,16 @@ export class GanttChart {
                   text-transform: uppercase;
                   letter-spacing: 0.5px;
                   color: ${row.groupColor};
-                  gap: 6px;
+                  user-select: none;
                 ">
-                  <span style="font-size: 12px;">◈</span>
-                  <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${row.groupName}</span>
+                  <div class="group-title-wrapper" title="Doble clic para renombrar grupo" style="display: flex; align-items: center; gap: 6px; flex: 1; overflow: hidden; cursor: pointer;">
+                    <span style="font-size: 12px;">◈</span>
+                    <span class="group-name-text" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${row.groupName}</span>
+                    <span style="font-size: 9px; opacity: 0.6; font-weight: 500;">(${row.tasksCount || 0})</span>
+                  </div>
+                  <button class="btn-icon btn-delete-group" data-group-id="${row.groupId}" title="Eliminar grupo" style="width: 18px; height: 18px; font-size: 11px; color: var(--text-dim); background: transparent; cursor: pointer;">
+                    ✕
+                  </button>
                 </div>
               `;
             }
@@ -335,6 +348,42 @@ export class GanttChart {
     this.container.querySelector('#btn-header-add-task')?.addEventListener('click', (e) => {
       e.stopPropagation();
       this.onNewTaskClick();
+    });
+
+    // Gestión de Grupos: Renombrar con doble clic y Eliminar con confirmación inteligente
+    const groupHeaders = this.container.querySelectorAll('.task-row-group-header');
+    groupHeaders.forEach(grpEl => {
+      const groupId = grpEl.getAttribute('data-group-id');
+      const groupName = grpEl.getAttribute('data-group-name') || '';
+      const tasksCount = parseInt(grpEl.getAttribute('data-tasks-count') || '0', 10);
+
+      // Doble clic para renombrar grupo
+      const titleWrapper = grpEl.querySelector('.group-title-wrapper');
+      titleWrapper?.addEventListener('dblclick', (e) => {
+        e.stopPropagation();
+        if (groupId && this.onRenameGroup) {
+          const newName = prompt('Introduce el nuevo nombre para el grupo:', groupName);
+          if (newName && newName.trim() && newName.trim() !== groupName) {
+            this.onRenameGroup(groupId, newName.trim());
+          }
+        }
+      });
+
+      // Botón eliminar grupo
+      const btnDelete = grpEl.querySelector('.btn-delete-group');
+      btnDelete?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (!groupId || !this.onDeleteGroup) return;
+
+        if (tasksCount === 0) {
+          this.onDeleteGroup(groupId);
+        } else {
+          const confirmed = confirm(`El grupo "${groupName}" contiene ${tasksCount} actividad(es) asociada(s). Si continúas, también se eliminarán dichas actividades. ¿Deseas continuar?`);
+          if (confirmed) {
+            this.onDeleteGroup(groupId);
+          }
+        }
+      });
     });
 
     // Clic en fila lateral para editar
