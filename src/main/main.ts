@@ -66,29 +66,47 @@ function writeProjectsFile(data: unknown): boolean {
 
 function createWindow() {
   const initialConfig = readConfigFile();
-  const bounds = (initialConfig.windowBounds as { x?: number; y?: number; width?: number; height?: number }) || {};
   const isCompact = initialConfig.compactMode === true;
-
   const primaryDisplay = screen.getPrimaryDisplay();
-  const defaultWidth = isCompact ? 560 : 1020;
-  const defaultHeight = isCompact ? 85 : 580;
+  const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
 
-  const defaultX = Math.round((primaryDisplay.workAreaSize.width - defaultWidth) / 2);
-  const defaultY = Math.round((primaryDisplay.workAreaSize.height - defaultHeight) / 2);
+  const defaultNormalWidth = 1020;
+  const defaultNormalHeight = 580;
+  const defaultNormalX = Math.round((screenWidth - defaultNormalWidth) / 2);
+  const defaultNormalY = Math.round((screenHeight - defaultNormalHeight) / 2);
+
+  const defaultMiniWidth = 560;
+  const defaultMiniHeight = 85;
+  const defaultMiniX = Math.round((screenWidth - defaultMiniWidth) / 2);
+  const defaultMiniY = Math.round(screenHeight - defaultMiniHeight - 40);
+
+  const windowBounds = (initialConfig.windowBounds as { x?: number; y?: number; width?: number; height?: number }) || {};
+  const miniBounds = (initialConfig.miniBounds as { x?: number; y?: number }) || {};
+
+  const currentX = isCompact 
+    ? (typeof miniBounds.x === 'number' ? miniBounds.x : defaultMiniX)
+    : (typeof windowBounds.x === 'number' ? windowBounds.x : defaultNormalX);
+
+  const currentY = isCompact 
+    ? (typeof miniBounds.y === 'number' ? miniBounds.y : defaultMiniY)
+    : (typeof windowBounds.y === 'number' ? windowBounds.y : defaultNormalY);
+
+  const currentW = isCompact ? defaultMiniWidth : (typeof windowBounds.width === 'number' ? windowBounds.width : defaultNormalWidth);
+  const currentH = isCompact ? defaultMiniHeight : (typeof windowBounds.height === 'number' ? windowBounds.height : defaultNormalHeight);
 
   mainWindow = new BrowserWindow({
-    x: typeof bounds.x === 'number' ? bounds.x : defaultX,
-    y: typeof bounds.y === 'number' ? bounds.y : defaultY,
-    width: typeof bounds.width === 'number' ? bounds.width : defaultWidth,
-    height: typeof bounds.height === 'number' ? bounds.height : defaultHeight,
-    minWidth: isCompact ? 560 : 960,
-    minHeight: isCompact ? 85 : 480,
-    maxWidth: isCompact ? 560 : undefined,
-    maxHeight: isCompact ? 85 : undefined,
+    x: currentX,
+    y: currentY,
+    width: currentW,
+    height: currentH,
+    minWidth: isCompact ? defaultMiniWidth : 960,
+    minHeight: isCompact ? defaultMiniHeight : 480,
+    maxWidth: isCompact ? defaultMiniWidth : undefined,
+    maxHeight: isCompact ? defaultMiniHeight : undefined,
     frame: false,
     transparent: true,
     thickFrame: false,
-    alwaysOnTop: initialConfig.alwaysOnTop !== false,
+    alwaysOnTop: isCompact, // En modo mini siempre flotante; en modo normal se comporta como ventana estándar
     resizable: !isCompact,
     maximizable: !isCompact,
     hasShadow: true,
@@ -120,6 +138,30 @@ function createWindow() {
     }
   });
 
+  // Guardar posición desacoplada al mover
+  mainWindow.on('moved', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      const currentBounds = mainWindow.getBounds();
+      const cfg = readConfigFile();
+      if (cfg.compactMode === true) {
+        cfg.miniBounds = { x: currentBounds.x, y: currentBounds.y };
+      } else {
+        cfg.windowBounds = currentBounds;
+      }
+      writeConfigFile(cfg);
+    }
+  });
+
+  mainWindow.on('resized', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      const cfg = readConfigFile();
+      if (cfg.compactMode !== true) {
+        cfg.windowBounds = mainWindow.getBounds();
+        writeConfigFile(cfg);
+      }
+    }
+  });
+
   // Cargar frontend
   const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
   if (isDev && process.env.VITE_DEV_SERVER_URL) {
@@ -129,25 +171,6 @@ function createWindow() {
   }
 
   setupSystemTray(mainWindow);
-
-  mainWindow.on('moved', () => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      const currentBounds = mainWindow.getBounds();
-      const cfg = readConfigFile();
-      cfg.windowBounds = currentBounds;
-      writeConfigFile(cfg);
-    }
-  });
-
-  mainWindow.on('resized', () => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      const cfg = readConfigFile();
-      if (!cfg.compactMode) {
-        cfg.windowBounds = mainWindow.getBounds();
-        writeConfigFile(cfg);
-      }
-    }
-  });
 
   mainWindow.on('closed', () => {
     mainWindow = null;
@@ -172,7 +195,12 @@ function setupIpcHandlers() {
 
   ipcMain.handle('window:setAlwaysOnTop', (_event, always) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.setAlwaysOnTop(always, 'floating');
+      const cfg = readConfigFile();
+      if (cfg.compactMode) {
+        mainWindow.setAlwaysOnTop(always, 'floating');
+      } else {
+        mainWindow.setAlwaysOnTop(false);
+      }
     }
   });
 
@@ -197,22 +225,49 @@ function setupIpcHandlers() {
   ipcMain.handle('window:setCompactMode', (_event, compact) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
       const cfg = readConfigFile();
-      const bounds = mainWindow.getBounds();
+      const primaryDisplay = screen.getPrimaryDisplay();
+      const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
 
       if (compact) {
+        // Guardar bounds de modo normal
+        const normalBounds = mainWindow.getBounds();
+        cfg.windowBounds = normalBounds;
+        writeConfigFile(cfg);
+
+        // Restaurar posición de modo mini o centrar en parte inferior
+        const miniBounds = (cfg.miniBounds as { x?: number; y?: number }) || {};
+        const targetX = typeof miniBounds.x === 'number' ? miniBounds.x : Math.round((screenWidth - 560) / 2);
+        const targetY = typeof miniBounds.y === 'number' ? miniBounds.y : Math.round(screenHeight - 85 - 40);
+
         mainWindow.setResizable(false);
         mainWindow.setMaximizable(false);
+        mainWindow.setAlwaysOnTop(true, 'floating'); // Always on top en modo mini
         mainWindow.setMinimumSize(560, 85);
         mainWindow.setMaximumSize(560, 85);
+        mainWindow.setBounds({ x: targetX, y: targetY, width: 560, height: 85 });
         mainWindow.setContentSize(560, 85, false);
+
         const currentOpacity = typeof cfg.opacity === 'number' ? cfg.opacity : 0.92;
         mainWindow.setOpacity(Math.max(0.05, Math.min(1.0, currentOpacity)));
       } else {
+        // Guardar bounds de modo mini
+        const currentMiniBounds = mainWindow.getBounds();
+        cfg.miniBounds = { x: currentMiniBounds.x, y: currentMiniBounds.y };
+        writeConfigFile(cfg);
+
+        // Restaurar posición y tamaño de modo normal o centrar
+        const windowBounds = (cfg.windowBounds as { x?: number; y?: number; width?: number; height?: number }) || {};
+        const targetW = typeof windowBounds.width === 'number' ? windowBounds.width : 1020;
+        const targetH = typeof windowBounds.height === 'number' ? windowBounds.height : 580;
+        const targetX = typeof windowBounds.x === 'number' ? windowBounds.x : Math.round((screenWidth - targetW) / 2);
+        const targetY = typeof windowBounds.y === 'number' ? windowBounds.y : Math.round((screenHeight - targetH) / 2);
+
+        mainWindow.setAlwaysOnTop(false); // Ventana estándar de Windows en modo normal
         mainWindow.setMinimumSize(960, 480);
         mainWindow.setMaximumSize(3840, 2160);
         mainWindow.setResizable(true);
         mainWindow.setMaximizable(true);
-        mainWindow.setSize(Math.max(bounds.width, 1020), Math.max(bounds.height, 580), false);
+        mainWindow.setBounds({ x: targetX, y: targetY, width: targetW, height: targetH });
         mainWindow.setOpacity(1.0);
       }
     }

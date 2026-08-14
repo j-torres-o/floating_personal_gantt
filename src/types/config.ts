@@ -1,4 +1,3 @@
-export type ThemeMode = 'dark' | 'light';
 export type TimeScale = 'days' | 'weeks' | 'months';
 
 export interface WindowBounds {
@@ -8,37 +7,41 @@ export interface WindowBounds {
   height: number;
 }
 
+export interface MiniBounds {
+  x: number;
+  y: number;
+}
+
 export interface AppConfig {
-  version: string;
-  activeProjectId: string;
-  theme: ThemeMode;
+  version?: string;
+  theme: 'dark' | 'light';
   opacity: number;
-  alwaysOnTop: boolean;
-  launchOnStartup: boolean;
-  ghostOnInactivity: boolean;
-  inactivityTimeoutSeconds: number;
-  highlightWeekends: boolean;
+  alwaysOnTop?: boolean;
   timeScale: TimeScale;
   compactMode: boolean;
+  highlightWeekends?: boolean;
   windowBounds: WindowBounds;
+  miniBounds?: MiniBounds;
+  ghostOnInactivity: boolean;
+  inactivityTimeoutSeconds: number;
+  activeProjectId: string;
 }
 
 export const DEFAULT_CONFIG: AppConfig = {
   version: '0.5.1',
-  activeProjectId: 'proj-01',
   theme: 'dark',
   opacity: 0.92,
-  alwaysOnTop: true,
-  launchOnStartup: false,
-  ghostOnInactivity: false,
-  inactivityTimeoutSeconds: 5,
-  highlightWeekends: true,
+  alwaysOnTop: false,
   timeScale: 'days',
   compactMode: false,
+  highlightWeekends: true,
   windowBounds: {
     x: 100,
-    y: 80,
-    width: 960,
+    y: 100,
+    width: 1020,
     height: 580
-  }
+  },
+  ghostOnInactivity: false,
+  inactivityTimeoutSeconds: 5,
+  activeProjectId: 'proj-001'
 };
