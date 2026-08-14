@@ -22,6 +22,7 @@ export interface AppConfig {
   highlightWeekends?: boolean;
   windowBounds: WindowBounds;
   miniBounds?: MiniBounds;
+  taskListWidth?: number;
   ghostOnInactivity: boolean;
   inactivityTimeoutSeconds: number;
   activeProjectId: string;
@@ -35,6 +36,7 @@ export const DEFAULT_CONFIG: AppConfig = {
   timeScale: 'days',
   compactMode: false,
   highlightWeekends: true,
+  taskListWidth: 220,
   windowBounds: {
     x: 100,
     y: 100,

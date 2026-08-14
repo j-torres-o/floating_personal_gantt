@@ -338,6 +338,23 @@ body {
   z-index: 40;
 }
 
+/* Manija de Redimensionamiento de la Columna */
+.task-column-resizer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: -3px;
+  width: 6px;
+  cursor: col-resize;
+  z-index: 45;
+  transition: background var(--transition-fast);
+}
+
+.task-column-resizer:hover, .task-column-resizer:active {
+  background: var(--accent-primary);
+  box-shadow: 0 0 8px var(--accent-glow);
+}
+
 .task-row-label {
   height: 42px;
   display: flex;
