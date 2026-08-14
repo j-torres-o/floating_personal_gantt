@@ -513,3 +513,50 @@ body {
     box-shadow: 0 0 18px rgba(239, 68, 68, 0.85);
   }
 }
+
+/* ==========================================================================
+   Scrollbars Personalizadas Glassmorphism
+   ========================================================================== */
+
+/* Base & Tema Oscuro */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.5);
+  border-radius: var(--radius-sm);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: var(--radius-sm);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background var(--transition-fast);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-primary);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Tema Claro */
+body.theme-light ::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+body.theme-light ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.22);
+}
+
+body.theme-light ::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-primary);
+}
+
