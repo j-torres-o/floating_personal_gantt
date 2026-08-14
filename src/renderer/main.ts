@@ -196,7 +196,8 @@ class App {
       }
 
       if (this.config.compactMode && this.config.ghostOnInactivity) {
-        const timeoutMs = (this.config.inactivityTimeoutSeconds || 5) * 1000;
+        const mins = typeof this.config.inactivityTimeoutMinutes === 'number' ? this.config.inactivityTimeoutMinutes : 2;
+        const timeoutMs = Math.max(10000, mins * 60 * 1000);
         this.inactivityTimer = setTimeout(() => {
           this.isFadedOut = true;
           this.applyOpacity(Math.min(0.15, this.config.opacity));
@@ -418,23 +419,42 @@ class App {
           <!-- Menú Gráfico de Herramientas desplegable -->
           <div style="position: relative;">
             <button class="btn-icon" id="btn-toggle-tools-menu" title="Herramientas y Configuración">⚙️</button>
-            <div id="tools-dropdown-menu" style="display: ${this.isToolsMenuOpen ? 'flex' : 'none'}; position: absolute; top: 32px; right: 0; background: var(--bg-panel); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--border-glass-bright); border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 9999; min-width: 230px; flex-direction: column; padding: 8px; gap: 4px;">
+            <div id="tools-dropdown-menu" style="display: ${this.isToolsMenuOpen ? 'flex' : 'none'}; position: absolute; top: 32px; right: 0; background: var(--bg-panel); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--border-glass-bright); border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 9999; min-width: 250px; flex-direction: column; padding: 8px; gap: 4px;">
               <div class="menu-item" id="tool-toggle-theme" style="display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;">
                 <span>🌓</span> Alternar Tema (Claro / Oscuro)
               </div>
 
               <!-- Toggle Ejecutar al Iniciar Windows -->
-              <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; font-size: 12px;">
-                <label for="check-launch-startup" style="cursor: pointer; display: flex; align-items: center; gap: 6px;">
-                  <span>🚀</span> Iniciar con Windows
+              <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; font-size: 12px;" title="Inicia la aplicación automáticamente al arrancar el sistema operativo Windows">
+                <label for="check-launch-startup" style="cursor: pointer;">
+                  Iniciar con Windows
                 </label>
                 <input type="checkbox" id="check-launch-startup" ${this.config.launchOnStartup ? 'checked' : ''} style="cursor: pointer;" />
+              </div>
+
+              <!-- Configuración de Autodesvanecimiento por Inactividad -->
+              <div style="display: flex; flex-direction: column; gap: 4px; padding: 6px 10px; border-radius: 4px; background: rgba(255,255,255,0.02);" title="Atenúa la ventana automáticamente tras el tiempo seleccionado sin mover el ratón">
+                <div style="display: flex; align-items: center; justify-content: space-between; font-size: 12px;">
+                  <label for="check-inactivity-fade" style="cursor: pointer;">
+                    Autodesvanecer por inactividad
+                  </label>
+                  <input type="checkbox" id="check-inactivity-fade" ${this.config.ghostOnInactivity ? 'checked' : ''} style="cursor: pointer;" />
+                </div>
+                <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; margin-top: 2px;">
+                  <span style="color: var(--text-muted);">Tiempo de espera:</span>
+                  <select id="select-inactivity-mins" class="select-input" style="font-size: 11px; padding: 2px 4px; height: 22px;">
+                    <option value="1" ${(this.config.inactivityTimeoutMinutes || 2) === 1 ? 'selected' : ''}>1 minuto</option>
+                    <option value="2" ${(this.config.inactivityTimeoutMinutes || 2) === 2 ? 'selected' : ''}>2 minutos (por defecto)</option>
+                    <option value="5" ${(this.config.inactivityTimeoutMinutes || 2) === 5 ? 'selected' : ''}>5 minutos</option>
+                    <option value="10" ${(this.config.inactivityTimeoutMinutes || 2) === 10 ? 'selected' : ''}>10 minutos</option>
+                  </select>
+                </div>
               </div>
               
               <div style="height: 1px; background: var(--grid-line); margin: 3px 0;"></div>
               
               <!-- Control de Opacidad del Modo Mini -->
-              <div style="padding: 4px 8px; display: flex; flex-direction: column; gap: 4px;">
+              <div style="padding: 4px 10px; display: flex; flex-direction: column; gap: 4px;" title="Ajusta el nivel de transparencia de la ventana en el modo mini HUD flotante">
                 <div style="display: flex; align-items: center; justify-content: space-between;">
                   <span style="font-size: 11px; color: var(--text-muted); font-weight: 600;">Opacidad Mini:</span>
                   <input type="range" id="tool-input-opacity" min="0.05" max="1.0" step="0.05" value="${this.config.opacity}" style="width: 80px;" />
@@ -443,19 +463,19 @@ class App {
 
               <div style="height: 1px; background: var(--grid-line); margin: 3px 0;"></div>
 
-              <div class="menu-item" id="tool-export-png" style="display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;">
-                <span>🖼️</span> Exportar Gantt a PNG
+              <div class="menu-item" id="tool-export-png" title="Genera y guarda una imagen PNG en alta resolución del diagrama de Gantt actual" style="padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                Exportar Gantt a PNG
               </div>
-              <div class="menu-item" id="tool-export-json" style="display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;">
-                <span>💾</span> Exportar Respaldo JSON
+              <div class="menu-item" id="tool-export-json" title="Guarda una copia de respaldo completa con todos tus proyectos, grupos y tareas en formato JSON" style="padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                Exportar Respaldo JSON
               </div>
-              <div class="menu-item" id="tool-import-json" style="display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;">
-                <span>📂</span> Importar Respaldo JSON
+              <div class="menu-item" id="tool-import-json" title="Restaura todos tus proyectos y actividades desde un archivo de respaldo JSON previo" style="padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                Importar Respaldo JSON
               </div>
               
               <div style="height: 1px; background: var(--grid-line); margin: 3px 0;"></div>
               
-              <div class="menu-item" id="tool-toggle-ghost" style="display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;">
+              <div class="menu-item" id="tool-toggle-ghost" title="Activa la transparencia total para que el cursor haga clic en las ventanas y aplicaciones que están detrás" style="display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;">
                 <span>👻</span> Activar Modo Fantasma
               </div>
 
@@ -504,10 +524,6 @@ class App {
           </select>
 
           <button class="btn-secondary" id="btn-today">📍 Hoy</button>
-        </div>
-
-        <div class="toolbar-group" style="display: flex; align-items: center; gap: 6px;">
-          <button class="btn-icon ${this.config.ghostOnInactivity ? 'active' : ''}" id="btn-toggle-inactivity" title="Auto-desvanecer mini-barra al no usar el ratón">⏳</button>
         </div>
       </div>
 
@@ -645,11 +661,18 @@ class App {
       }
     });
 
-    document.getElementById('btn-toggle-inactivity')?.addEventListener('click', () => {
-      this.config.ghostOnInactivity = !this.config.ghostOnInactivity;
+    document.getElementById('check-inactivity-fade')?.addEventListener('change', (e) => {
+      this.config.ghostOnInactivity = (e.target as HTMLInputElement).checked;
       storageService.saveConfig(this.config);
       this.setupInactivityFade();
-      this.render();
+    });
+
+    document.getElementById('select-inactivity-mins')?.addEventListener('change', (e) => {
+      const mins = parseInt((e.target as HTMLSelectElement).value, 10) || 2;
+      this.config.inactivityTimeoutMinutes = mins;
+      this.config.inactivityTimeoutSeconds = mins * 60;
+      storageService.saveConfig(this.config);
+      this.setupInactivityFade();
     });
 
     document.getElementById('select-scale')?.addEventListener('change', (e) => {

@@ -25,12 +25,13 @@ export interface AppConfig {
   taskListWidth?: number;
   launchOnStartup?: boolean;
   ghostOnInactivity: boolean;
-  inactivityTimeoutSeconds: number;
+  inactivityTimeoutMinutes?: number;
+  inactivityTimeoutSeconds?: number;
   activeProjectId: string;
 }
 
 export const DEFAULT_CONFIG: AppConfig = {
-  version: '0.7.0',
+  version: '0.7.1',
   theme: 'dark',
   opacity: 0.92,
   alwaysOnTop: false,
@@ -46,6 +47,7 @@ export const DEFAULT_CONFIG: AppConfig = {
     height: 580
   },
   ghostOnInactivity: false,
-  inactivityTimeoutSeconds: 5,
+  inactivityTimeoutMinutes: 2,
+  inactivityTimeoutSeconds: 120,
   activeProjectId: 'proj-001'
 };
