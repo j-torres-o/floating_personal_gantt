@@ -1,6 +1,6 @@
 # 📊 Floating Personal Gantt
 
-[![CI Workflow](https://github.com/usuario/floating_personal_gantt/actions/workflows/ci.yml/badge.svg)](https://github.com/usuario/floating_personal_gantt/actions)
+[![CI Workflow](https://github.com/j-torres-o/floating_personal_gantt/actions/workflows/ci.yml/badge.svg)](https://github.com/j-torres-o/floating_personal_gantt/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/Platform-Windows-0078D6.svg?logo=windows)](https://www.microsoft.com/windows)
 [![Version](https://img.shields.io/badge/Version-0.1.0-emerald.svg)](package.json)
@@ -65,7 +65,7 @@ Para ver la especificación técnica completa y los diagramas arquitectónicos d
 ### Instalación
 ```powershell
 # Clonar el repositorio
-git clone https://github.com/usuario/floating_personal_gantt.git
+git clone https://github.com/j-torres-o/floating_personal_gantt.git
 cd floating_personal_gantt
 
 # Instalar dependencias
