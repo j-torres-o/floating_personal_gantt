@@ -24,7 +24,7 @@ export interface AppConfig {
 }
 
 export const DEFAULT_CONFIG: AppConfig = {
-  version: '1.0',
+  version: '0.4.1',
   activeProjectId: 'proj-01',
   theme: 'dark',
   opacity: 0.92,

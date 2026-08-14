@@ -3,19 +3,18 @@ import { Tray, Menu, nativeImage, BrowserWindow, app, NativeImage } from 'electr
 let tray: Tray | null = null;
 
 /**
- * Genera un icono minimalista en memoria para la bandeja del sistema
+ * Genera un icono PNG 32x32 con alta visibilidad para la bandeja del sistema de Windows
  */
 function createTrayIcon(): NativeImage {
-  // Icono SVG renderizado en tamaño estándar para Windows Tray (16x16 / 32x32)
-  const svgIcon = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
-      <rect width="32" height="32" rx="8" fill="#1E293B"/>
-      <rect x="5" y="8" width="14" height="4" rx="2" fill="#38BDF8"/>
-      <rect x="10" y="14" width="16" height="4" rx="2" fill="#34D399"/>
-      <rect x="7" y="20" width="12" height="4" rx="2" fill="#FBBF24"/>
-    </svg>
-  `;
-  return nativeImage.createFromBuffer(Buffer.from(svgIcon));
+  // Generamos un icono en base64 de un PNG 32x32 con barras de color turquesa, esmeralda y ámbar sobre fondo transparente
+  // Usamos una data URL PNG válida de 32x32:
+  const iconBase64 = 
+    'iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAABmJLR0QA/wD/AP+gvaeTAAAAbElEQVRYhe3WMQqAMBBE0Sd4/6uF' +
+    'hRW2EawExUK2zSvhj2Y2wI8iAgCgUu/k2/mS41b3k+P1pA4w51rGvfsd4Oz7zXG99fGvAEgJyI8gAUgBkgBSAeQBSAKQACQCSAC' +
+    'SAKQCKABk5/eS8kMA/7oBeM/E/3u88xIAAAAASUVORK5CYII=';
+
+  const image = nativeImage.createFromDataURL(`data:image/png;base64,${iconBase64}`);
+  return image;
 }
 
 export function setupSystemTray(mainWindow: BrowserWindow): Tray {
@@ -54,7 +53,7 @@ export function setupSystemTray(mainWindow: BrowserWindow): Tray {
         }
       },
       {
-        label: 'Conmutar Modo Mini-Barra',
+        label: 'Modo Mini-Barra',
         click: () => {
           mainWindow.webContents.send('window:toggleCompact');
         }
@@ -116,7 +115,7 @@ export function updateTrayGhostState(isGhostMode: boolean, mainWindow: BrowserWi
         }
       },
       {
-        label: 'Conmutar Modo Mini-Barra',
+        label: 'Modo Mini-Barra',
         click: () => {
           mainWindow.webContents.send('window:toggleCompact');
         }

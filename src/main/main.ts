@@ -10,14 +10,12 @@ const userDataPath = path.join(app.getPath('appData'), 'floating-personal-gantt'
 const configFilePath = path.join(userDataPath, 'config.json');
 const projectsFilePath = path.join(userDataPath, 'projects.json');
 
-// Asegurar existencia del directorio de datos
 function ensureStorageDirectory() {
   if (!fs.existsSync(userDataPath)) {
     fs.mkdirSync(userDataPath, { recursive: true });
   }
 }
 
-// Cargar o inicializar config.json
 function readConfigFile(): Record<string, unknown> {
   try {
     ensureStorageDirectory();
@@ -31,7 +29,6 @@ function readConfigFile(): Record<string, unknown> {
   return {};
 }
 
-// Guardar config.json
 function writeConfigFile(data: unknown): boolean {
   try {
     ensureStorageDirectory();
@@ -43,7 +40,6 @@ function writeConfigFile(data: unknown): boolean {
   }
 }
 
-// Cargar o inicializar projects.json
 function readProjectsFile(): Record<string, unknown> {
   try {
     ensureStorageDirectory();
@@ -57,7 +53,6 @@ function readProjectsFile(): Record<string, unknown> {
   return {};
 }
 
-// Guardar projects.json
 function writeProjectsFile(data: unknown): boolean {
   try {
     ensureStorageDirectory();
@@ -75,8 +70,8 @@ function createWindow() {
   const isCompact = initialConfig.compactMode === true;
 
   const primaryDisplay = screen.getPrimaryDisplay();
-  const defaultWidth = isCompact ? 420 : 960;
-  const defaultHeight = isCompact ? 72 : 580;
+  const defaultWidth = isCompact ? 560 : 1020;
+  const defaultHeight = isCompact ? 85 : 580;
 
   const defaultX = Math.round((primaryDisplay.workAreaSize.width - defaultWidth) / 2);
   const defaultY = Math.round((primaryDisplay.workAreaSize.height - defaultHeight) / 2);
@@ -86,14 +81,19 @@ function createWindow() {
     y: typeof bounds.y === 'number' ? bounds.y : defaultY,
     width: typeof bounds.width === 'number' ? bounds.width : defaultWidth,
     height: typeof bounds.height === 'number' ? bounds.height : defaultHeight,
-    minWidth: 320,
-    minHeight: 60,
+    minWidth: isCompact ? 560 : 960,
+    minHeight: isCompact ? 85 : 480,
+    maxWidth: isCompact ? 560 : undefined,
+    maxHeight: isCompact ? 85 : undefined,
     frame: false,
     transparent: true,
+    thickFrame: false,
     alwaysOnTop: initialConfig.alwaysOnTop !== false,
-    resizable: true,
+    resizable: !isCompact,
+    maximizable: !isCompact,
     hasShadow: true,
     skipTaskbar: false,
+    opacity: isCompact ? Math.max(0.05, Math.min(1.0, (initialConfig.opacity as number) || 0.92)) : 1.0,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
@@ -101,7 +101,26 @@ function createWindow() {
     }
   });
 
-  // Cargar frontend (en desarrollo desde Vite dev server o archivo estático)
+  mainWindow.on('will-resize', (e) => {
+    const cfg = readConfigFile();
+    if (cfg.compactMode === true) {
+      e.preventDefault();
+    }
+  });
+
+  mainWindow.on('resize', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      const cfg = readConfigFile();
+      if (cfg.compactMode === true) {
+        const [currentW, currentH] = mainWindow.getSize();
+        if (currentW !== 560 || currentH !== 85) {
+          mainWindow.setContentSize(560, 85, false);
+        }
+      }
+    }
+  });
+
+  // Cargar frontend
   const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged;
   if (isDev && process.env.VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
@@ -109,10 +128,8 @@ function createWindow() {
     mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   }
 
-  // Configurar System Tray
   setupSystemTray(mainWindow);
 
-  // Guardar posición al mover o redimensionar
   mainWindow.on('moved', () => {
     if (mainWindow && !mainWindow.isDestroyed()) {
       const currentBounds = mainWindow.getBounds();
@@ -124,10 +141,11 @@ function createWindow() {
 
   mainWindow.on('resized', () => {
     if (mainWindow && !mainWindow.isDestroyed()) {
-      const currentBounds = mainWindow.getBounds();
       const cfg = readConfigFile();
-      cfg.windowBounds = currentBounds;
-      writeConfigFile(cfg);
+      if (!cfg.compactMode) {
+        cfg.windowBounds = mainWindow.getBounds();
+        writeConfigFile(cfg);
+      }
     }
   });
 
@@ -136,17 +154,14 @@ function createWindow() {
   });
 }
 
-// Configurar IPC Handlers
 function setupIpcHandlers() {
-  // Almacenamiento desacoplado
   ipcMain.handle('storage:loadConfig', () => readConfigFile());
   ipcMain.handle('storage:saveConfig', (_event, config) => writeConfigFile(config));
   ipcMain.handle('storage:loadProjects', () => readProjectsFile());
   ipcMain.handle('storage:saveProjects', (_event, data) => writeProjectsFile(data));
 
-  // Ventana
   ipcMain.handle('window:getBounds', () => {
-    return mainWindow ? mainWindow.getBounds() : { x: 0, y: 0, width: 960, height: 580 };
+    return mainWindow ? mainWindow.getBounds() : { x: 0, y: 0, width: 1020, height: 580 };
   });
 
   ipcMain.handle('window:setBounds', (_event, bounds) => {
@@ -163,7 +178,12 @@ function setupIpcHandlers() {
 
   ipcMain.handle('window:setOpacity', (_event, opacity) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.setOpacity(Math.max(0.1, Math.min(1.0, opacity)));
+      const cfg = readConfigFile();
+      if (cfg.compactMode) {
+        mainWindow.setOpacity(Math.max(0.05, Math.min(1.0, opacity)));
+      } else {
+        mainWindow.setOpacity(1.0);
+      }
     }
   });
 
@@ -176,11 +196,24 @@ function setupIpcHandlers() {
 
   ipcMain.handle('window:setCompactMode', (_event, compact) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
+      const cfg = readConfigFile();
       const bounds = mainWindow.getBounds();
+
       if (compact) {
-        mainWindow.setSize(440, 74, true);
+        mainWindow.setResizable(false);
+        mainWindow.setMaximizable(false);
+        mainWindow.setMinimumSize(560, 85);
+        mainWindow.setMaximumSize(560, 85);
+        mainWindow.setContentSize(560, 85, false);
+        const currentOpacity = typeof cfg.opacity === 'number' ? cfg.opacity : 0.92;
+        mainWindow.setOpacity(Math.max(0.05, Math.min(1.0, currentOpacity)));
       } else {
-        mainWindow.setSize(Math.max(bounds.width, 900), Math.max(bounds.height, 560), true);
+        mainWindow.setMinimumSize(960, 480);
+        mainWindow.setMaximumSize(3840, 2160);
+        mainWindow.setResizable(true);
+        mainWindow.setMaximizable(true);
+        mainWindow.setSize(Math.max(bounds.width, 1020), Math.max(bounds.height, 580), false);
+        mainWindow.setOpacity(1.0);
       }
     }
   });
@@ -197,7 +230,6 @@ function setupIpcHandlers() {
     }
   });
 
-  // Configuración de inicio con Windows
   ipcMain.handle('system:setLaunchOnStartup', (_event, enable) => {
     app.setLoginItemSettings({
       openAtLogin: enable,
@@ -206,7 +238,6 @@ function setupIpcHandlers() {
   });
 }
 
-// Inicialización de la aplicación
 app.whenReady().then(() => {
   setupIpcHandlers();
   createWindow();

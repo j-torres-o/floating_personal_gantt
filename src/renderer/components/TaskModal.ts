@@ -1,11 +1,12 @@
-import { Category, Task, TaskStatus } from '../../types/project';
+import { Category, Task, TaskGroup, TaskStatus } from '../../types/project';
 import { formatDateISO } from '../services/dateUtils';
 
 export interface TaskModalOptions {
   task?: Task | null;
   categories: Category[];
+  groups?: TaskGroup[];
   defaultStartDate?: string;
-  onSave: (taskData: Omit<Task, 'id'> & { id?: string }) => void;
+  onSave: (taskData: Omit<Task, 'id'> & { id?: string; newGroupName?: string }) => void;
   onDelete?: (taskId: string) => void;
   onClose: () => void;
 }
@@ -25,10 +26,12 @@ export class TaskModal {
     const nextWeekStr = formatDateISO(new Date(Date.now() + 5 * 86400000));
 
     const initialTitle = task?.title || '';
-    const initialCategoryId = task?.categoryId || this.options.categories[0]?.id || '';
+    const initialCategoryId = task?.categoryId || ''; // Sin categoría por defecto
+    const initialGroupId = task?.groupId || '';
     const initialStartDate = task?.startDate || this.options.defaultStartDate || todayStr;
     const initialEndDate = task?.endDate || nextWeekStr;
     const initialStatus: TaskStatus = task?.status || 'in_progress';
+    const groups = this.options.groups || [];
 
     this.modalEl = document.createElement('div');
     this.modalEl.className = 'modal-backdrop';
@@ -50,13 +53,13 @@ export class TaskModal {
         background: var(--bg-panel);
         border: 1px solid var(--border-glass-bright);
         border-radius: var(--radius-lg);
-        width: 380px;
+        width: 400px;
         max-width: 90vw;
         padding: 20px;
         box-shadow: var(--glass-shadow);
         display: flex;
         flex-direction: column;
-        gap: 14px;
+        gap: 12px;
         color: var(--text-main);
       ">
         <div style="display: flex; align-items: center; justify-content: space-between;">
@@ -64,32 +67,51 @@ export class TaskModal {
           <button class="btn-icon" id="modal-btn-close" style="width: 26px; height: 26px;">✕</button>
         </div>
 
-        <div style="display: flex; flex-direction: column; gap: 6px;">
-          <label style="font-size: 12px; color: var(--text-muted);">Nombre de la Tarea:</label>
-          <input type="text" id="modal-task-title" class="text-input" value="${initialTitle}" placeholder="Ej. Lanzamiento de Versión" style="width: 100%;" autofocus />
-        </div>
-
-        <div style="display: flex; flex-direction: column; gap: 6px;">
-          <label style="font-size: 12px; color: var(--text-muted);">Categoría:</label>
-          <select id="modal-task-category" class="select-input" style="width: 100%;">
-            ${this.options.categories.map(c => `
-              <option value="${c.id}" ${c.id === initialCategoryId ? 'selected' : ''}>${c.name}</option>
-            `).join('')}
-          </select>
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <label style="font-size: 12px; color: var(--text-muted);">Nombre de la Actividad:</label>
+          <input type="text" id="modal-task-title" class="text-input" value="${initialTitle}" placeholder="Ej. Diseño de Maqueta" style="width: 100%;" autofocus />
         </div>
 
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-          <div style="display: flex; flex-direction: column; gap: 6px;">
-            <label style="font-size: 12px; color: var(--text-muted);">Inicio:</label>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <label style="font-size: 12px; color: var(--text-muted);">Categoría:</label>
+            <select id="modal-task-category" class="select-input" style="width: 100%;">
+              <option value="" ${!initialCategoryId ? 'selected' : ''}>Sin Categoría</option>
+              ${this.options.categories.map(c => `
+                <option value="${c.id}" ${c.id === initialCategoryId ? 'selected' : ''}>${c.name}</option>
+              `).join('')}
+            </select>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <label style="font-size: 12px; color: var(--text-muted);">Fase / Grupo:</label>
+            <select id="modal-task-group" class="select-input" style="width: 100%;">
+              <option value="" ${!initialGroupId ? 'selected' : ''}>Sin Grupo (General)</option>
+              ${groups.map(g => `
+                <option value="${g.id}" ${g.id === initialGroupId ? 'selected' : ''}>◈ ${g.name}</option>
+              `).join('')}
+              <option value="__NEW_GROUP__">+ Nueva Fase/Grupo...</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="modal-new-group-container" style="display: none; flex-direction: column; gap: 4px;">
+          <label style="font-size: 12px; color: var(--accent-primary);">Nombre de la Nueva Fase/Grupo:</label>
+          <input type="text" id="modal-new-group-name" class="text-input" placeholder="Ej. Fase 2: Implementación" style="width: 100%; border-color: var(--accent-primary);" />
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <label style="font-size: 12px; color: var(--text-muted);">Fecha Inicio:</label>
             <input type="date" id="modal-task-start" class="text-input" value="${initialStartDate}" style="width: 100%;" />
           </div>
-          <div style="display: flex; flex-direction: column; gap: 6px;">
-            <label style="font-size: 12px; color: var(--text-muted);">Fin:</label>
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <label style="font-size: 12px; color: var(--text-muted);">Fecha Fin:</label>
             <input type="date" id="modal-task-end" class="text-input" value="${initialEndDate}" style="width: 100%;" />
           </div>
         </div>
 
-        <div style="display: flex; flex-direction: column; gap: 6px;">
+        <div style="display: flex; flex-direction: column; gap: 4px;">
           <label style="font-size: 12px; color: var(--text-muted);">Estado:</label>
           <select id="modal-task-status" class="select-input" style="width: 100%;">
             <option value="pending" ${initialStatus === 'pending' ? 'selected' : ''}>⏳ Pendiente</option>
@@ -115,6 +137,18 @@ export class TaskModal {
 
     document.body.appendChild(this.modalEl);
 
+    // Toggle para input de nuevo grupo
+    const groupSelect = this.modalEl.querySelector('#modal-task-group') as HTMLSelectElement;
+    const newGroupContainer = this.modalEl.querySelector('#modal-new-group-container') as HTMLElement;
+    groupSelect.addEventListener('change', () => {
+      if (groupSelect.value === '__NEW_GROUP__') {
+        newGroupContainer.style.display = 'flex';
+        (newGroupContainer.querySelector('#modal-new-group-name') as HTMLInputElement).focus();
+      } else {
+        newGroupContainer.style.display = 'none';
+      }
+    });
+
     // Bind eventos
     this.modalEl.addEventListener('click', (e) => {
       if (e.target === this.modalEl) this.close();
@@ -134,7 +168,6 @@ export class TaskModal {
       this.handleSave(isEdit ? task?.id : undefined);
     });
 
-    // Tecla Escape para salir y Enter para guardar
     const keyHandler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         this.close();
@@ -151,7 +184,9 @@ export class TaskModal {
     if (!this.modalEl) return;
 
     const title = (this.modalEl.querySelector('#modal-task-title') as HTMLInputElement).value.trim();
-    const categoryId = (this.modalEl.querySelector('#modal-task-category') as HTMLSelectElement).value;
+    const categoryIdVal = (this.modalEl.querySelector('#modal-task-category') as HTMLSelectElement).value;
+    const groupSelect = this.modalEl.querySelector('#modal-task-group') as HTMLSelectElement;
+    const newGroupName = (this.modalEl.querySelector('#modal-new-group-name') as HTMLInputElement).value.trim();
     const startDate = (this.modalEl.querySelector('#modal-task-start') as HTMLInputElement).value;
     const endDate = (this.modalEl.querySelector('#modal-task-end') as HTMLInputElement).value;
     const status = (this.modalEl.querySelector('#modal-task-status') as HTMLSelectElement).value as TaskStatus;
@@ -166,10 +201,22 @@ export class TaskModal {
       return;
     }
 
+    let finalGroupId: string | undefined = undefined;
+    if (groupSelect.value === '__NEW_GROUP__') {
+      if (!newGroupName) {
+        alert('Por favor introduce el nombre de la nueva fase/grupo.');
+        return;
+      }
+    } else if (groupSelect.value) {
+      finalGroupId = groupSelect.value;
+    }
+
     this.options.onSave({
       id: taskId,
       title,
-      categoryId,
+      categoryId: categoryIdVal || undefined, // undefined si es Sin Categoría
+      groupId: finalGroupId,
+      newGroupName: groupSelect.value === '__NEW_GROUP__' ? newGroupName : undefined,
       startDate,
       endDate,
       status

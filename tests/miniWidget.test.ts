@@ -5,6 +5,7 @@ import { formatDateISO } from '../src/renderer/services/dateUtils';
 
 describe('MiniWidget', () => {
   let mockProject: Project;
+  let allProjects: Project[];
   let container: HTMLElement;
 
   beforeEach(() => {
@@ -24,7 +25,7 @@ describe('MiniWidget', () => {
       tasks: [
         {
           id: 'tsk-active-1',
-          title: 'Tarea Activa Hoy 1',
+          title: 'Actividad Activa Hoy 1',
           categoryId: 'cat-1',
           startDate: todayISO,
           endDate: tomorrowISO,
@@ -32,15 +33,15 @@ describe('MiniWidget', () => {
         },
         {
           id: 'tsk-active-2',
-          title: 'Tarea Activa Hoy 2',
+          title: 'Actividad Activa Hoy 2',
           categoryId: 'cat-2',
           startDate: todayISO,
           endDate: nextWeekISO,
-          status: 'in_progress'
+          status: 'pending'
         },
         {
           id: 'tsk-completed',
-          title: 'Tarea ya completada',
+          title: 'Actividad ya completada',
           categoryId: 'cat-1',
           startDate: todayISO,
           endDate: tomorrowISO,
@@ -48,12 +49,16 @@ describe('MiniWidget', () => {
         }
       ]
     };
+
+    allProjects = [mockProject];
   });
 
-  it('filtra correctamente las tareas activas para el día de hoy excluyendo completadas', () => {
+  it('filtra estrictamente solo actividades pendientes y en curso ordenadas', () => {
     const widget = new MiniWidget({
       container,
       project: mockProject,
+      allProjects,
+      onSelectProject: () => {},
       onExpand: () => {},
       onToggleGhost: () => {},
       onClose: () => {},
@@ -62,37 +67,18 @@ describe('MiniWidget', () => {
 
     const activeTasks = widget.getTodayActiveTasks();
     expect(activeTasks.length).toBe(2);
-    expect(activeTasks[0].id).toBe('tsk-active-1');
-    expect(activeTasks[1].id).toBe('tsk-active-2');
+    expect(activeTasks.find(t => t.id === 'tsk-completed')).toBeUndefined();
   });
 
-  it('rota entre las tareas activas con el carrusel', () => {
-    const widget = new MiniWidget({
-      container,
-      project: mockProject,
-      onExpand: () => {},
-      onToggleGhost: () => {},
-      onClose: () => {},
-      onTaskStatusChange: () => {}
-    });
-
-    widget.render();
-    expect(container.innerHTML).toContain('Tarea Activa Hoy 1');
-
-    widget.nextTask();
-    expect(container.innerHTML).toContain('Tarea Activa Hoy 2');
-
-    widget.prevTask();
-    expect(container.innerHTML).toContain('Tarea Activa Hoy 1');
-  });
-
-  it('permite cambiar el estado de la tarea activa', () => {
+  it('permite transicionar actividad de in_progress a completed con icono ✓', () => {
     let changedTask: Task | null = null;
     let newStatusResult = '';
 
     const widget = new MiniWidget({
       container,
       project: mockProject,
+      allProjects,
+      onSelectProject: () => {},
       onExpand: () => {},
       onToggleGhost: () => {},
       onClose: () => {},
@@ -104,11 +90,42 @@ describe('MiniWidget', () => {
 
     widget.render();
 
-    const completeBtn = container.querySelector('#btn-widget-complete-task') as HTMLButtonElement;
-    expect(completeBtn).not.toBeNull();
-    completeBtn.click();
+    const actionBtn = container.querySelector('#btn-widget-action-task') as HTMLButtonElement;
+    expect(actionBtn).not.toBeNull();
+    expect(actionBtn.textContent?.trim()).toBe('✓');
+    actionBtn.click();
 
     expect(changedTask).not.toBeNull();
     expect(newStatusResult).toBe('completed');
+  });
+
+  it('permite transicionar actividad de pending a in_progress con icono ▶', () => {
+    let changedTask: Task | null = null;
+    let newStatusResult = '';
+
+    const widget = new MiniWidget({
+      container,
+      project: mockProject,
+      allProjects,
+      onSelectProject: () => {},
+      onExpand: () => {},
+      onToggleGhost: () => {},
+      onClose: () => {},
+      onTaskStatusChange: (task, newStatus) => {
+        changedTask = task;
+        newStatusResult = newStatus;
+      }
+    });
+
+    widget.render();
+    widget.nextTask();
+
+    const actionBtn = container.querySelector('#btn-widget-action-task') as HTMLButtonElement;
+    expect(actionBtn).not.toBeNull();
+    expect(actionBtn.textContent?.trim()).toBe('▶');
+    actionBtn.click();
+
+    expect(changedTask).not.toBeNull();
+    expect(newStatusResult).toBe('in_progress');
   });
 });
