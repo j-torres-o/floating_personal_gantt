@@ -1,16 +1,21 @@
 import { storageService } from './services/storage';
 import { AppConfig } from '../types/config';
 import { ProjectsData, Project, Task } from '../types/project';
-import { formatDateISO, parseDateISO, diffDays } from './services/dateUtils';
+import { formatDateISO } from './services/dateUtils';
 import { GanttChart } from './components/GanttChart';
+import { MiniWidget } from './components/MiniWidget';
 
 class App {
   private config!: AppConfig;
   private projectsData!: ProjectsData;
   private currentProject!: Project;
   private rootEl!: HTMLElement;
-  private activeCarouselIndex = 0;
   private ganttChart: GanttChart | null = null;
+  private miniWidget: MiniWidget | null = null;
+
+  // Temporizador de inactividad
+  private inactivityTimer: ReturnType<typeof setTimeout> | null = null;
+  private isFadedOut = false;
 
   public async init() {
     this.rootEl = document.getElementById('app-root')!;
@@ -25,6 +30,9 @@ class App {
     // Aplicar tema y opacidad inicial
     this.applyTheme(this.config.theme);
     this.applyOpacity(this.config.opacity);
+
+    // Configurar temporizador de auto-desvanecimiento
+    this.setupInactivityFade();
 
     // Escuchar eventos IPC desde System Tray
     if (window.electronAPI) {
@@ -49,6 +57,35 @@ class App {
     }
   }
 
+  private setupInactivityFade() {
+    const resetInactivityTimer = () => {
+      if (this.isFadedOut) {
+        this.isFadedOut = false;
+        this.applyOpacity(this.config.opacity);
+        this.rootEl.style.opacity = '1';
+      }
+
+      if (this.inactivityTimer) {
+        clearTimeout(this.inactivityTimer);
+      }
+
+      if (this.config.ghostOnInactivity) {
+        const timeoutMs = (this.config.inactivityTimeoutSeconds || 5) * 1000;
+        this.inactivityTimer = setTimeout(() => {
+          this.isFadedOut = true;
+          this.applyOpacity(Math.min(0.20, this.config.opacity));
+          this.rootEl.style.opacity = '0.35';
+        }, timeoutMs);
+      }
+    };
+
+    window.addEventListener('mousemove', resetInactivityTimer, { passive: true });
+    window.addEventListener('mousedown', resetInactivityTimer, { passive: true });
+    window.addEventListener('keydown', resetInactivityTimer, { passive: true });
+
+    resetInactivityTimer();
+  }
+
   public toggleCompactMode() {
     this.config.compactMode = !this.config.compactMode;
     storageService.saveConfig(this.config);
@@ -58,76 +95,35 @@ class App {
     this.render();
   }
 
+  private activateGhostMode() {
+    if (window.electronAPI) {
+      window.electronAPI.setIgnoreMouseEvents(true, false);
+    }
+  }
+
   private render() {
     if (this.config.compactMode) {
-      this.renderMiniWidget();
+      this.renderMiniWidgetView();
     } else {
       this.renderExpandedGantt();
     }
   }
 
-  private renderMiniWidget() {
-    const todayISO = formatDateISO(new Date());
-    // Filtrar tareas que incluyan el día actual
-    const activeTasks = this.currentProject.tasks.filter(t => {
-      return t.startDate <= todayISO && t.endDate >= todayISO && t.status !== 'completed';
+  private renderMiniWidgetView() {
+    this.miniWidget = new MiniWidget({
+      container: this.rootEl,
+      project: this.currentProject,
+      onExpand: () => this.toggleCompactMode(),
+      onToggleGhost: () => this.activateGhostMode(),
+      onClose: () => window.electronAPI?.closeWindow(),
+      onTaskStatusChange: (task, newStatus) => {
+        task.status = newStatus;
+        storageService.saveProjects(this.projectsData);
+        this.miniWidget?.render();
+      }
     });
 
-    const total = activeTasks.length;
-    const task = total > 0 ? activeTasks[this.activeCarouselIndex % total] : null;
-
-    let taskHtml = '';
-    if (task) {
-      const remaining = diffDays(new Date(), parseDateISO(task.endDate));
-      const category = this.currentProject.categories.find(c => c.id === task.categoryId);
-      taskHtml = `
-        <div class="mini-widget-task-info">
-          <div class="mini-widget-task-title" style="border-left: 3px solid ${category?.color || '#38BDF8'}; padding-left: 6px;">
-            ${task.title}
-          </div>
-          <div class="mini-widget-task-meta">
-            ${remaining === 0 ? '¡Vence hoy!' : remaining > 0 ? `Restan ${remaining} días` : '⚠️ Vencida'}
-          </div>
-        </div>
-      `;
-    } else {
-      taskHtml = `
-        <div class="mini-widget-task-info">
-          <div class="mini-widget-task-title">Sin tareas activas hoy</div>
-          <div class="mini-widget-task-meta">Todo al día</div>
-        </div>
-      `;
-    }
-
-    this.rootEl.innerHTML = `
-      <div class="mini-widget-container">
-        <div class="mini-widget-carousel">
-          <span class="app-badge">GANTT HUD</span>
-          ${total > 1 ? `
-            <button class="btn-icon" id="btn-carousel-prev">‹</button>
-            <span style="font-size: 11px; color: var(--text-dim);">${(this.activeCarouselIndex % total) + 1}/${total}</span>
-            <button class="btn-icon" id="btn-carousel-next">›</button>
-          ` : ''}
-          ${taskHtml}
-        </div>
-        <div class="titlebar-actions">
-          <button class="btn-icon" id="btn-expand-hud" title="Expandir tablero completo">⛶</button>
-          <button class="btn-icon btn-close" id="btn-close-app" title="Cerrar">✕</button>
-        </div>
-      </div>
-    `;
-
-    // Eventos del MiniWidget
-    document.getElementById('btn-expand-hud')?.addEventListener('click', () => this.toggleCompactMode());
-    document.getElementById('btn-close-app')?.addEventListener('click', () => window.electronAPI?.closeWindow());
-    document.getElementById('btn-carousel-prev')?.addEventListener('click', () => {
-      this.activeCarouselIndex = (this.activeCarouselIndex - 1 + total) % total;
-      this.render();
-    });
-    document.getElementById('btn-carousel-next')?.addEventListener('click', () => {
-      this.activeCarouselIndex = (this.activeCarouselIndex + 1) % total;
-      this.render();
-    });
+    this.miniWidget.render();
   }
 
   private renderExpandedGantt() {
@@ -170,6 +166,7 @@ class App {
             Opacidad:
             <input type="range" id="input-opacity" min="0.3" max="1.0" step="0.05" value="${this.config.opacity}" style="width: 70px;" />
           </label>
+          <button class="btn-icon ${this.config.ghostOnInactivity ? 'active' : ''}" id="btn-toggle-inactivity" title="Auto-desvanecer al no usar el ratón">⏳</button>
           <button class="btn-icon" id="btn-toggle-theme" title="Alternar tema claro/oscuro">🌓</button>
           <button class="btn-primary" id="btn-new-task">+ Nueva Tarea</button>
         </div>
@@ -186,7 +183,6 @@ class App {
       project: this.currentProject,
       config: this.config,
       onTaskChange: (_updatedTask) => {
-        // Auto-save inmediato tras interacción Drag & Drop o Resize
         storageService.saveProjects(this.projectsData);
       }
     });
@@ -196,9 +192,7 @@ class App {
     // Eventos Toolbar y Ventana
     document.getElementById('btn-close-app')?.addEventListener('click', () => window.electronAPI?.closeWindow());
     document.getElementById('btn-toggle-compact')?.addEventListener('click', () => this.toggleCompactMode());
-    document.getElementById('btn-toggle-ghost')?.addEventListener('click', () => {
-      window.electronAPI?.setIgnoreMouseEvents(true, false);
-    });
+    document.getElementById('btn-toggle-ghost')?.addEventListener('click', () => this.activateGhostMode());
 
     document.getElementById('btn-today')?.addEventListener('click', () => {
       this.ganttChart?.scrollToToday();
@@ -217,6 +211,13 @@ class App {
       this.applyTheme(this.config.theme);
       storageService.saveConfig(this.config);
       this.ganttChart?.updateConfig(this.config);
+    });
+
+    document.getElementById('btn-toggle-inactivity')?.addEventListener('click', () => {
+      this.config.ghostOnInactivity = !this.config.ghostOnInactivity;
+      storageService.saveConfig(this.config);
+      this.setupInactivityFade();
+      this.render();
     });
 
     document.getElementById('input-opacity')?.addEventListener('input', (e) => {
