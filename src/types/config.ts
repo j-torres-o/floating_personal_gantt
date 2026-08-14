@@ -30,7 +30,7 @@ export interface AppConfig {
 }
 
 export const DEFAULT_CONFIG: AppConfig = {
-  version: '0.5.1',
+  version: '0.6.0',
   theme: 'dark',
   opacity: 0.92,
   alwaysOnTop: false,
