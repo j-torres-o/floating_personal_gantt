@@ -36,20 +36,50 @@ class App {
   public async init() {
     this.rootEl = document.getElementById('app-root')!;
     
-    // Cargar datos desacoplados
+    // Cargar datos desacoplados con validación
     this.config = await storageService.loadConfig();
     this.projectsData = await storageService.loadProjects();
+
+    if (!this.projectsData || !Array.isArray(this.projectsData.projects) || this.projectsData.projects.length === 0) {
+      this.projectsData = {
+        version: '0.6.1',
+        projects: [
+          {
+            id: 'proj-001',
+            name: 'Mi Primer Proyecto',
+            createdAt: new Date().toISOString(),
+            groups: [
+              { id: 'grp-01', name: 'Fase Inicial', color: '#8B5CF6' }
+            ],
+            categories: [
+              { id: 'cat-01', name: 'Desarrollo', color: '#3B82F6' },
+              { id: 'cat-02', name: 'Diseño', color: '#10B981' }
+            ],
+            tasks: []
+          }
+        ]
+      };
+    }
 
     // Seleccionar proyecto activo
     this.currentProject = this.projectsData.projects.find(p => p.id === this.config.activeProjectId) || this.projectsData.projects[0];
 
-    // Asegurar estructura de grupos si no existiera
+    if (!this.currentProject) {
+      this.currentProject = this.projectsData.projects[0];
+    }
+
     if (!this.currentProject.groups) {
       this.currentProject.groups = [];
     }
+    if (!this.currentProject.tasks) {
+      this.currentProject.tasks = [];
+    }
+    if (!this.currentProject.categories) {
+      this.currentProject.categories = [];
+    }
 
     // Aplicar tema y opacidad inicial
-    this.applyTheme(this.config.theme);
+    this.applyTheme(this.config.theme || 'dark');
     this.applyOpacity(this.config.compactMode ? this.config.opacity : 1.0);
 
     // Configurar temporizador de auto-desvanecimiento
@@ -632,8 +662,25 @@ class App {
   }
 }
 
-// Iniciar aplicación
-document.addEventListener('DOMContentLoaded', () => {
+function startApp() {
   const app = new App();
-  app.init();
-});
+  app.init().catch((err) => {
+    console.error('Error al inicializar Floating Personal Gantt:', err);
+    const root = document.getElementById('app-root');
+    if (root) {
+      root.innerHTML = `
+        <div style="padding: 20px; color: #EF4444; font-family: sans-serif; background: rgba(0,0,0,0.8); border-radius: 8px;">
+          <h3>Error al cargar la aplicación</h3>
+          <p>${err.message}</p>
+        </div>
+      `;
+    }
+  });
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', startApp);
+} else {
+  startApp();
+}
+
