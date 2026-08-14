@@ -10,6 +10,7 @@ import {
   isWeekend 
 } from '../services/dateUtils';
 import { storageService } from '../services/storage';
+import { PromptModal } from './PromptModal';
 
 export interface GanttChartOptions {
   container: HTMLElement;
@@ -357,15 +358,23 @@ export class GanttChart {
       const groupName = grpEl.getAttribute('data-group-name') || '';
       const tasksCount = parseInt(grpEl.getAttribute('data-tasks-count') || '0', 10);
 
-      // Doble clic para renombrar grupo
+      // Doble clic para renombrar grupo con PromptModal interactivo
       const titleWrapper = grpEl.querySelector('.group-title-wrapper');
       titleWrapper?.addEventListener('dblclick', (e) => {
         e.stopPropagation();
         if (groupId && this.onRenameGroup) {
-          const newName = prompt('Introduce el nuevo nombre para el grupo:', groupName);
-          if (newName && newName.trim() && newName.trim() !== groupName) {
-            this.onRenameGroup(groupId, newName.trim());
-          }
+          const modal = new PromptModal({
+            title: 'Renombrar Grupo',
+            label: 'Introduce el nuevo nombre para este grupo:',
+            defaultValue: groupName,
+            confirmText: 'Guardar',
+            onConfirm: (newName) => {
+              if (newName && newName.trim() && newName.trim() !== groupName) {
+                this.onRenameGroup!(groupId, newName.trim());
+              }
+            }
+          });
+          modal.open();
         }
       });
 

@@ -8,6 +8,7 @@ import { ProjectModal } from './components/ProjectModal';
 import { ContextMenu } from './components/ContextMenu';
 import { AboutModal } from './components/AboutModal';
 import { UpdateModal } from './components/UpdateModal';
+import { PromptModal } from './components/PromptModal';
 import { exportGanttToPNG, exportToJSON, importFromJSON } from './services/exporter';
 import { UpdateInfoResult } from '../types/electron';
 
@@ -707,12 +708,20 @@ class App {
     });
 
     document.getElementById('btn-rename-project')?.addEventListener('click', () => {
-      const newName = prompt('Introduce el nuevo nombre para el proyecto actual:', this.currentProject.name);
-      if (newName && newName.trim() && newName.trim() !== this.currentProject.name) {
-        this.currentProject.name = newName.trim();
-        storageService.saveProjects(this.projectsData);
-        this.render();
-      }
+      const modal = new PromptModal({
+        title: 'Renombrar Proyecto',
+        label: 'Introduce el nuevo nombre para este proyecto:',
+        defaultValue: this.currentProject.name,
+        confirmText: 'Guardar',
+        onConfirm: (newName) => {
+          if (newName && newName.trim() && newName.trim() !== this.currentProject.name) {
+            this.currentProject.name = newName.trim();
+            storageService.saveProjects(this.projectsData);
+            this.render();
+          }
+        }
+      });
+      modal.open();
     });
 
     document.getElementById('btn-delete-project')?.addEventListener('click', () => {

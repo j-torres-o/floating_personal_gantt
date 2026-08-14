@@ -1,6 +1,6 @@
 {
   "name": "floating-personal-gantt",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "description": "Aplicación de escritorio ultra-ligera y moderna para Windows con diagrama de Gantt flotante, modo Click-Through, mini-widget HUD y persistencia desacoplada.",
   "main": "dist-electron/main/main.js",
   "scripts": {
