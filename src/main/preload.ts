@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import { AppConfig, WindowBounds } from '../types/config';
 import { ProjectsData } from '../types/project';
+import { UpdateInfoResult } from '../types/electron';
 
 contextBridge.exposeInMainWorld('electronAPI', {
   // Almacenamiento desacoplado
@@ -19,8 +20,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
   minimizeWindow: (): Promise<void> => ipcRenderer.invoke('window:minimize'),
   closeWindow: (): Promise<void> => ipcRenderer.invoke('window:close'),
 
-  // Configuración del Sistema
+  // Configuración del Sistema y Auto-Inicio
   setLaunchOnStartup: (enable: boolean): Promise<void> => ipcRenderer.invoke('system:setLaunchOnStartup', enable),
+  getLaunchOnStartup: (): Promise<boolean> => ipcRenderer.invoke('system:getLaunchOnStartup'),
+
+  // Auto-Updater
+  checkForUpdates: (): Promise<UpdateInfoResult> => ipcRenderer.invoke('updater:checkForUpdates'),
+  downloadAndInstallUpdate: (downloadUrl: string, assetName: string): Promise<boolean> => 
+    ipcRenderer.invoke('updater:downloadAndInstall', downloadUrl, assetName),
+  onUpdateDownloadProgress: (callback: (percent: number) => void) => {
+    const handler = (_event: any, percent: number) => callback(percent);
+    ipcRenderer.on('updater:downloadProgress', handler);
+    return () => ipcRenderer.removeListener('updater:downloadProgress', handler);
+  },
 
   // Escuchar eventos desde el Proceso Principal (System Tray / Atajos)
   onRestoreFromGhost: (callback: () => void) => {
