@@ -10,6 +10,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   loadProjects: (): Promise<ProjectsData> => ipcRenderer.invoke('storage:loadProjects'),
   saveProjects: (data: ProjectsData): Promise<boolean> => ipcRenderer.invoke('storage:saveProjects', data),
 
+  // Información de la Aplicación
+  getAppVersion: (): Promise<string> => ipcRenderer.invoke('app:getVersion'),
+
   // Control de Ventana
   setWindowBounds: (bounds: Partial<WindowBounds>): Promise<void> => ipcRenderer.invoke('window:setBounds', bounds),
   getWindowBounds: (): Promise<WindowBounds> => ipcRenderer.invoke('window:getBounds'),
