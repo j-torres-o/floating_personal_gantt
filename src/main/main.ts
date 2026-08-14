@@ -2,6 +2,7 @@ import { app, BrowserWindow, ipcMain, screen } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { setupSystemTray, updateTrayGhostState } from './tray';
+import { checkForAppUpdates, downloadAndInstallUpdate } from './autoUpdater';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -106,7 +107,7 @@ function createWindow() {
     frame: false,
     transparent: true,
     thickFrame: false,
-    alwaysOnTop: isCompact, // En modo mini siempre flotante; en modo normal se comporta como ventana estándar
+    alwaysOnTop: isCompact,
     resizable: !isCompact,
     maximizable: !isCompact,
     hasShadow: true,
@@ -138,7 +139,6 @@ function createWindow() {
     }
   });
 
-  // Guardar posición desacoplada al mover
   mainWindow.on('moved', () => {
     if (mainWindow && !mainWindow.isDestroyed()) {
       const currentBounds = mainWindow.getBounds();
@@ -229,19 +229,17 @@ function setupIpcHandlers() {
       const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
 
       if (compact) {
-        // Guardar bounds de modo normal
         const normalBounds = mainWindow.getBounds();
         cfg.windowBounds = normalBounds;
         writeConfigFile(cfg);
 
-        // Restaurar posición de modo mini o centrar en parte inferior
         const miniBounds = (cfg.miniBounds as { x?: number; y?: number }) || {};
         const targetX = typeof miniBounds.x === 'number' ? miniBounds.x : Math.round((screenWidth - 560) / 2);
         const targetY = typeof miniBounds.y === 'number' ? miniBounds.y : Math.round(screenHeight - 85 - 40);
 
         mainWindow.setResizable(false);
         mainWindow.setMaximizable(false);
-        mainWindow.setAlwaysOnTop(true, 'floating'); // Always on top en modo mini
+        mainWindow.setAlwaysOnTop(true, 'floating');
         mainWindow.setMinimumSize(560, 85);
         mainWindow.setMaximumSize(560, 85);
         mainWindow.setBounds({ x: targetX, y: targetY, width: 560, height: 85 });
@@ -250,19 +248,17 @@ function setupIpcHandlers() {
         const currentOpacity = typeof cfg.opacity === 'number' ? cfg.opacity : 0.92;
         mainWindow.setOpacity(Math.max(0.05, Math.min(1.0, currentOpacity)));
       } else {
-        // Guardar bounds de modo mini
         const currentMiniBounds = mainWindow.getBounds();
         cfg.miniBounds = { x: currentMiniBounds.x, y: currentMiniBounds.y };
         writeConfigFile(cfg);
 
-        // Restaurar posición y tamaño de modo normal o centrar
         const windowBounds = (cfg.windowBounds as { x?: number; y?: number; width?: number; height?: number }) || {};
         const targetW = typeof windowBounds.width === 'number' ? windowBounds.width : 1020;
         const targetH = typeof windowBounds.height === 'number' ? windowBounds.height : 580;
         const targetX = typeof windowBounds.x === 'number' ? windowBounds.x : Math.round((screenWidth - targetW) / 2);
         const targetY = typeof windowBounds.y === 'number' ? windowBounds.y : Math.round((screenHeight - targetH) / 2);
 
-        mainWindow.setAlwaysOnTop(false); // Ventana estándar de Windows en modo normal
+        mainWindow.setAlwaysOnTop(false);
         mainWindow.setMinimumSize(960, 480);
         mainWindow.setMaximumSize(3840, 2160);
         mainWindow.setResizable(true);
@@ -285,10 +281,29 @@ function setupIpcHandlers() {
     }
   });
 
-  ipcMain.handle('system:setLaunchOnStartup', (_event, enable) => {
+  // Auto-Inicio al arrancar Windows
+  ipcMain.handle('system:setLaunchOnStartup', (_event, enable: boolean) => {
     app.setLoginItemSettings({
       openAtLogin: enable,
       path: process.execPath
+    });
+  });
+
+  ipcMain.handle('system:getLaunchOnStartup', () => {
+    const settings = app.getLoginItemSettings();
+    return settings.openAtLogin;
+  });
+
+  // Auto-Updater con GitHub Releases
+  ipcMain.handle('updater:checkForUpdates', async () => {
+    return await checkForAppUpdates();
+  });
+
+  ipcMain.handle('updater:downloadAndInstall', async (_event, downloadUrl: string, assetName: string) => {
+    return await downloadAndInstallUpdate(downloadUrl, assetName, (percent) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('updater:downloadProgress', percent);
+      }
     });
   });
 }

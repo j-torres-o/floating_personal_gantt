@@ -6,7 +6,10 @@ import { MiniWidget } from './components/MiniWidget';
 import { TaskModal } from './components/TaskModal';
 import { ProjectModal } from './components/ProjectModal';
 import { ContextMenu } from './components/ContextMenu';
+import { AboutModal } from './components/AboutModal';
+import { UpdateModal } from './components/UpdateModal';
 import { exportGanttToPNG, exportToJSON, importFromJSON } from './services/exporter';
+import { UpdateInfoResult } from '../types/electron';
 
 class App {
   private config!: AppConfig;
@@ -26,6 +29,9 @@ class App {
   // Temporizador de inactividad
   private inactivityTimer: ReturnType<typeof setTimeout> | null = null;
   private isFadedOut = false;
+
+  // Referencia al modal de actualización activo
+  private activeUpdateModal: UpdateModal | null = null;
 
   public async init() {
     this.rootEl = document.getElementById('app-root')!;
@@ -57,9 +63,73 @@ class App {
       window.electronAPI.onToggleCompact(() => {
         this.toggleCompactMode();
       });
+
+      // Escuchar progreso de descarga de actualizaciones
+      window.electronAPI.onUpdateDownloadProgress((percent) => {
+        if (this.activeUpdateModal) {
+          this.activeUpdateModal.updateProgress(percent);
+        }
+      });
     }
 
     this.render();
+
+    // Comprobar actualizaciones automáticamente de fondo
+    this.checkForUpdatesSilently();
+  }
+
+  private async checkForUpdatesSilently() {
+    if (!window.electronAPI) return;
+    try {
+      const updateInfo = await window.electronAPI.checkForUpdates();
+      if (updateInfo.hasUpdate && updateInfo.downloadUrl) {
+        this.showUpdateModal(updateInfo);
+      }
+    } catch (err) {
+      console.warn('No se pudo verificar actualización en inicio:', err);
+    }
+  }
+
+  private showUpdateModal(updateInfo: UpdateInfoResult) {
+    this.activeUpdateModal = new UpdateModal({
+      updateInfo,
+      onConfirmUpdate: async () => {
+        if (window.electronAPI && updateInfo.downloadUrl) {
+          try {
+            await window.electronAPI.downloadAndInstallUpdate(updateInfo.downloadUrl, updateInfo.assetName || 'update.exe');
+          } catch (err) {
+            alert(`Error al descargar la actualización: ${(err as Error).message}`);
+            this.activeUpdateModal?.close();
+          }
+        }
+      },
+      onClose: () => {
+        this.activeUpdateModal = null;
+      }
+    });
+    this.activeUpdateModal.open();
+  }
+
+  private openAboutModal() {
+    const currentVer = this.config.version || '0.5.1';
+    const modal = new AboutModal({
+      currentVersion: currentVer,
+      onCheckUpdates: async () => {
+        if (!window.electronAPI) return;
+        try {
+          const updateInfo = await window.electronAPI.checkForUpdates();
+          if (updateInfo.hasUpdate && updateInfo.downloadUrl) {
+            this.showUpdateModal(updateInfo);
+          } else {
+            alert(`✨ ¡Tienes la versión más reciente instalada! (v${currentVer})`);
+          }
+        } catch (err) {
+          alert(`Error al buscar actualizaciones: ${(err as Error).message}`);
+        }
+      },
+      onClose: () => {}
+    });
+    modal.open();
   }
 
   private applyTheme(theme: 'dark' | 'light') {
@@ -86,7 +156,6 @@ class App {
         clearTimeout(this.inactivityTimer);
       }
 
-      // Solo atenuar por inactividad si está en modo mini
       if (this.config.compactMode && this.config.ghostOnInactivity) {
         const timeoutMs = (this.config.inactivityTimeoutSeconds || 5) * 1000;
         this.inactivityTimer = setTimeout(() => {
@@ -312,9 +381,17 @@ class App {
           <!-- Menú Gráfico de Herramientas desplegable -->
           <div style="position: relative;">
             <button class="btn-icon" id="btn-toggle-tools-menu" title="Herramientas y Configuración">⚙️</button>
-            <div id="tools-dropdown-menu" style="display: ${this.isToolsMenuOpen ? 'flex' : 'none'}; position: absolute; top: 32px; right: 0; background: var(--bg-panel); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--border-glass-bright); border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 9999; min-width: 220px; flex-direction: column; padding: 8px; gap: 4px;">
+            <div id="tools-dropdown-menu" style="display: ${this.isToolsMenuOpen ? 'flex' : 'none'}; position: absolute; top: 32px; right: 0; background: var(--bg-panel); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--border-glass-bright); border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); z-index: 9999; min-width: 230px; flex-direction: column; padding: 8px; gap: 4px;">
               <div class="menu-item" id="tool-toggle-theme" style="display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;">
                 <span>🌓</span> Alternar Tema (Claro / Oscuro)
+              </div>
+
+              <!-- Toggle Ejecutar al Iniciar Windows -->
+              <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; font-size: 12px;">
+                <label for="check-launch-startup" style="cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                  <span>🚀</span> Iniciar con Windows
+                </label>
+                <input type="checkbox" id="check-launch-startup" ${this.config.launchOnStartup ? 'checked' : ''} style="cursor: pointer;" />
               </div>
               
               <div style="height: 1px; background: var(--grid-line); margin: 3px 0;"></div>
@@ -343,6 +420,12 @@ class App {
               
               <div class="menu-item" id="tool-toggle-ghost" style="display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;">
                 <span>👻</span> Activar Modo Fantasma
+              </div>
+
+              <div style="height: 1px; background: var(--grid-line); margin: 3px 0;"></div>
+
+              <div class="menu-item" id="tool-open-about" style="display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; color: var(--accent-primary);">
+                <span>ℹ️</span> Acerca de Floating Gantt
               </div>
             </div>
           </div>
@@ -451,6 +534,21 @@ class App {
       this.applyTheme(this.config.theme);
       storageService.saveConfig(this.config);
       this.ganttChart?.updateConfig(this.config);
+    });
+
+    document.getElementById('check-launch-startup')?.addEventListener('change', async (e) => {
+      const isChecked = (e.target as HTMLInputElement).checked;
+      this.config.launchOnStartup = isChecked;
+      storageService.saveConfig(this.config);
+      if (window.electronAPI) {
+        await window.electronAPI.setLaunchOnStartup(isChecked);
+      }
+    });
+
+    document.getElementById('tool-open-about')?.addEventListener('click', () => {
+      this.isToolsMenuOpen = false;
+      if (toolsMenu) toolsMenu.style.display = 'none';
+      this.openAboutModal();
     });
 
     document.getElementById('tool-toggle-ghost')?.addEventListener('click', () => this.activateGhostMode());

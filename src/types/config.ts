@@ -23,6 +23,7 @@ export interface AppConfig {
   windowBounds: WindowBounds;
   miniBounds?: MiniBounds;
   taskListWidth?: number;
+  launchOnStartup?: boolean;
   ghostOnInactivity: boolean;
   inactivityTimeoutSeconds: number;
   activeProjectId: string;
@@ -37,6 +38,7 @@ export const DEFAULT_CONFIG: AppConfig = {
   compactMode: false,
   highlightWeekends: true,
   taskListWidth: 220,
+  launchOnStartup: false,
   windowBounds: {
     x: 100,
     y: 100,
