@@ -6,10 +6,14 @@
 
 ## 🧭 Flujo de Trabajo (Git Flow)
 
-1. **Crear una Rama de Trabajo**:
-   - Para nuevas funcionalidades: `git checkout -b feat/nombre-funcionalidad`
-   - Para corrección de errores: `git checkout -b fix/descripcion-del-bug`
-   - Para refactorizaciones: `git checkout -b refactor/mejora`
+### 1. Convención de Ramas y Separación Estricta por Tipología
+- **Regla Fundamental**: Cada rama y PR debe tener un **único propósito**. Nunca mezclar `fix/`, `feat/`, `refactor/` o `docs/` en un mismo branch/commit.
+- `feat/nombre-funcionalidad`: Nuevas características.
+- `fix/correccion-bug`: Corrección de errores reportados.
+- `refactor/mejora-arquitectura`: Refactorización y reestructuración.
+- `docs/documentacion`: Mejoras o adiciones a la documentación.
+- `style/ajuste-visual`: Ajustes de estilo visual.
+- `test/nuevas-pruebas`: Cobertura de pruebas unitarias.
 
 2. **Convención de Commits (Conventional Commits)**:
    - Formato requerido: `<tipo>(<alcance opcional>): <descripción>`
